@@ -28,7 +28,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 100,
+        "x": 140,
         "y": 220,
         "wires": [
             [
@@ -52,8 +52,7 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "credentials": {},
-        "x": 290,
+        "x": 330,
         "y": 220,
         "wires": [
             [
@@ -74,7 +73,7 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 440,
+        "x": 480,
         "y": 140,
         "wires": []
     },
@@ -89,7 +88,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 490,
+        "x": 530,
         "y": 220,
         "wires": [
             [
@@ -110,7 +109,7 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 660,
+        "x": 700,
         "y": 300,
         "wires": []
     },
@@ -139,7 +138,7 @@
         "topic": "topic",
         "topicType": "msg",
         "className": "",
-        "x": 700,
+        "x": 740,
         "y": 220,
         "wires": [
             [
@@ -167,7 +166,7 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 870,
+        "x": 910,
         "y": 220,
         "wires": [
             [
@@ -198,7 +197,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 140,
-        "y": 620,
+        "y": 520,
         "wires": [
             [
                 "99a25f43290c34a9"
@@ -222,7 +221,7 @@
         "senderr": false,
         "headers": [],
         "x": 310,
-        "y": 620,
+        "y": 520,
         "wires": [
             [
                 "ad2d11dc1d74d011",
@@ -242,8 +241,8 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 500,
-        "y": 580,
+        "x": 400,
+        "y": 460,
         "wires": []
     },
     {
@@ -284,8 +283,8 @@
         "outputs": 1,
         "useDifferentColor": false,
         "className": "",
-        "x": 1090,
-        "y": 580,
+        "x": 1130,
+        "y": 520,
         "wires": [
             []
         ]
@@ -294,15 +293,15 @@
         "id": "b307f578fe1f70df",
         "type": "function",
         "z": "139be3927a5a98ed",
-        "name": "Extract data",
-        "func": "var data = msg.payload;\nvar cpu = data[0].cpu === 'low' ? 1 : 2;\nvar memory = data[0].memory === 'low' ? 1 : 2;\nvar networkReceived = data[0].networkreceived === 'low' ? 1 : 2;\nvar networkTransmitted = data[0].networktransmitted === 'low' ? 1 : 2;\nvar fsWrites = data[0].fswrites === 'low' ? 1 : 2;\nvar fsReads = data[0].fsreads === 'low' ? 1 : 2;\n\nmsg.newdata = {\n    \"CPU\": cpu,\n    \"Memory\": memory,\n    \"Network Received\": networkReceived,\n    \"Network Transmitted\": networkTransmitted,\n    \"fs Writes\": fsWrites,\n    \"fs Reads\": fsReads\n};\n\nmsg.template = msg.payload[0];\n\nreturn msg;\n",
+        "name": "Extract data & convert low: 1, high: 2",
+        "func": "var data = msg.payload;\nvar cpu = data[0].cpu === 'low' ? 1 : 2;\nvar memory = data[0].memory === 'low' ? 1 : 2;\nvar networkReceived = data[0].networkreceived === 'low' ? 1 : 2;\nvar networkTransmitted = data[0].networktransmitted === 'low' ? 1 : 2;\nvar fsWrites = data[0].fswrites === 'low' ? 1 : 2;\nvar fsReads = data[0].fsreads === 'low' ? 1 : 2;\n\nmsg.newdata = {\n    \"CPU\": cpu,\n    \"Memory\": memory,\n    \"Network Received\": networkReceived,\n    \"Network Transmitted\": networkTransmitted,\n    \"fs Writes\": fsWrites,\n    \"fs Reads\": fsReads\n};\nmsg.profile = msg.payload[0];\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 510,
-        "y": 640,
+        "x": 570,
+        "y": 520,
         "wires": [
             [
                 "e70be03bdcf39538",
@@ -322,23 +321,23 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 720,
-        "y": 720,
+        "x": 680,
+        "y": 460,
         "wires": []
     },
     {
         "id": "1962b71e212d975d",
         "type": "function",
         "z": "139be3927a5a98ed",
-        "name": "Convert low to 1 and high to 2",
+        "name": "Create bar chart data",
         "func": "var labels = [];\nvar data = [];\n\nlabels = Object.keys(msg.newdata);\ndata = Object.values(msg.newdata);\n\nmsg.payload = [{\n    \"series\": [\"\"],\n    \"data\": [data],\n    \"labels\": labels\n}];\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 750,
-        "y": 580,
+        "x": 860,
+        "y": 520,
         "wires": [
             [
                 "5f84a0bec16c5bc7",
@@ -361,7 +360,7 @@
         "statusVal": "",
         "statusType": "auto",
         "x": 980,
-        "y": 720,
+        "y": 460,
         "wires": []
     },
     {
@@ -385,8 +384,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 139.8958282470703,
-        "y": 924.8888549804688,
+        "x": 140,
+        "y": 740,
         "wires": [
             [
                 "3c65fb109b799176"
@@ -409,8 +408,8 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 319.8958282470703,
-        "y": 924.8888549804688,
+        "x": 320,
+        "y": 740,
         "wires": [
             [
                 "55f8f677ce35d923"
@@ -429,8 +428,8 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 480,
-        "y": 860,
+        "x": 480.1041717529297,
+        "y": 675.1111450195312,
         "wires": []
     },
     {
@@ -445,7 +444,7 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1040,
+        "x": 1080,
         "y": 120,
         "wires": []
     },
@@ -461,7 +460,7 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 820,
+        "x": 860,
         "y": 140,
         "wires": []
     },
@@ -503,7 +502,7 @@
         "outputs": 1,
         "useDifferentColor": false,
         "className": "",
-        "x": 1080,
+        "x": 1120,
         "y": 220,
         "wires": [
             [
@@ -523,49 +522,60 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1240,
+        "x": 1280,
         "y": 140,
-        "wires": []
-    },
-    {
-        "id": "1d52287463441379",
-        "type": "debug",
-        "z": "139be3927a5a98ed",
-        "name": "debug 83",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1380,
-        "y": 620,
         "wires": []
     },
     {
         "id": "86b7befe50a69837",
         "type": "ui_template",
         "z": "139be3927a5a98ed",
-        "group": "0cad8e5064af894d",
+        "group": "aac210c709ba7797",
         "name": "",
-        "order": 4,
+        "order": 1,
         "width": 0,
         "height": 0,
-        "format": "<div ng-bind-html=\"msg.payload\">\n    <p>Action: {{msg.template.actionname}}</p>\n    <p>Branch Name: {{msg.template.branchname}}</p>\n    <p>Flow: {{msg.template.flow}}</p>\n    <p>Location: {{msg.template.location}}</p>\n    <br>\n</div>",
+        "format": "<p><b>Action</b>: {{msg.profile.actionname}}</p>\n<p><b>Branch Name</b>: {{msg.profile.branchname}}</p>\n<p><b>Flow</b>: {{msg.profile.flow}}</p>\n<p><b>Location</b>: {{msg.profile.location}}</p>\n<br>",
         "storeOutMessages": true,
         "fwdInMessages": true,
         "resendOnRefresh": true,
         "templateScope": "local",
         "className": "",
-        "x": 1040,
-        "y": 620,
+        "x": 1080,
+        "y": 560,
         "wires": [
-            [
-                "1d52287463441379"
-            ]
+            []
         ]
+    },
+    {
+        "id": "c297573df9e25c37",
+        "type": "comment",
+        "z": "139be3927a5a98ed",
+        "name": "PROFILE-DATA",
+        "info": "",
+        "x": 120,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "fbfcd1a643709d22",
+        "type": "comment",
+        "z": "139be3927a5a98ed",
+        "name": "LOADGEN",
+        "info": "",
+        "x": 140,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "faf09e12a6e5b421",
+        "type": "comment",
+        "z": "139be3927a5a98ed",
+        "name": "PROMETHEUS",
+        "info": "",
+        "x": 120.10417175292969,
+        "y": 695.1111450195312,
+        "wires": []
     },
     {
         "id": "b02f8cff8e770c31",
@@ -586,6 +596,17 @@
         "order": 1,
         "disp": true,
         "width": "10",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "aac210c709ba7797",
+        "type": "ui_group",
+        "name": "Profile Info",
+        "tab": "c1fc8b045485cd49",
+        "order": 2,
+        "disp": true,
+        "width": "6",
         "collapse": false,
         "className": ""
     },
