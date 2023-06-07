@@ -1,0 +1,374 @@
+[
+    {
+        "id": "139be3927a5a98ed",
+        "type": "tab",
+        "label": "Hackathon Visualization of Performance Data",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "140ca411be96a4dc",
+        "type": "inject",
+        "z": "139be3927a5a98ed",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 260,
+        "y": 200,
+        "wires": [
+            [
+                "66bd89e6c9441a1f"
+            ]
+        ]
+    },
+    {
+        "id": "66bd89e6c9441a1f",
+        "type": "http request",
+        "z": "139be3927a5a98ed",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://raw.githubusercontent.com/gkousiouris/2ndPHYSICSHackathon/main/dataFilesForVisualization/loadgen-data.json",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 450,
+        "y": 200,
+        "wires": [
+            [
+                "bca7468fb81747da",
+                "7635ee8c9a4e0769"
+            ]
+        ]
+    },
+    {
+        "id": "bca7468fb81747da",
+        "type": "debug",
+        "z": "139be3927a5a98ed",
+        "name": "debug 45",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 560,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "7635ee8c9a4e0769",
+        "type": "function",
+        "z": "139be3927a5a98ed",
+        "name": "Extract activationid",
+        "func": "var data = msg.payload;\nvar newjson = [];\n\nfor (var attr of data) {\n    var newobj = {};\n    newobj[attr[\"activationid\"]] = attr[\"activationid\"];\n    newjson.push(newobj)\n}\nmsg.options = newjson;\nglobal.set(\"dataset\", data)\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 200,
+        "wires": [
+            [
+                "a4b9e40227b13338",
+                "92dc646d6fb79020"
+            ]
+        ]
+    },
+    {
+        "id": "a4b9e40227b13338",
+        "type": "debug",
+        "z": "139be3927a5a98ed",
+        "name": "debug 46",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "92dc646d6fb79020",
+        "type": "ui_dropdown",
+        "z": "139be3927a5a98ed",
+        "name": "",
+        "label": "",
+        "tooltip": "",
+        "place": "Select option",
+        "group": "b02f8cff8e770c31",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "",
+                "value": "",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 860,
+        "y": 200,
+        "wires": [
+            [
+                "44860a9ae1f44512"
+            ]
+        ]
+    },
+    {
+        "id": "64dfe8550d53a5d7",
+        "type": "ui_chart",
+        "z": "139be3927a5a98ed",
+        "name": "",
+        "group": "b02f8cff8e770c31",
+        "order": 1,
+        "width": "14",
+        "height": "10",
+        "label": "LoadGen",
+        "chartType": "horizontalBar",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1540,
+        "y": 200,
+        "wires": [
+            [
+                "0a9b90eb646033f1"
+            ]
+        ]
+    },
+    {
+        "id": "0a9b90eb646033f1",
+        "type": "debug",
+        "z": "139be3927a5a98ed",
+        "name": "debug 53",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1600,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "fbfcd1a643709d22",
+        "type": "comment",
+        "z": "139be3927a5a98ed",
+        "name": "LOADGEN-DATA-FLOW",
+        "info": "",
+        "x": 210,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "44860a9ae1f44512",
+        "type": "function",
+        "z": "139be3927a5a98ed",
+        "name": "Get selected id info",
+        "func": "var data = global.get(\"dataset\");\nvar selected_id = msg.payload;\n\nfor (var info of data) {\n    if (info[\"activationid\"] === selected_id) {\n        msg.payload = info;\n    }\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1070,
+        "y": 200,
+        "wires": [
+            [
+                "3d81d506b99714a5",
+                "191aed42aa7ee1e6"
+            ]
+        ]
+    },
+    {
+        "id": "191aed42aa7ee1e6",
+        "type": "function",
+        "z": "139be3927a5a98ed",
+        "name": "Modify bar chart data",
+        "func": "var output = JSON.parse(msg.payload[\"output\"]);\n\nvar data = [];\nvar names = [];\nvar info = [];\nvar infonames = [];\n\ndelete output.inputData;\nvar labels = Object.keys(output);\n\nvar bar_strings = [\"methodPayload\", \"action\", \"status\", \"testName\", \"actualStartTime\", \"globalStartTime\", \"clientNumber\", \"coldStarts\", \"launchGeneratorDelay\", \"memory\", \"otherInfo\", \"parentSampleTime\", \"sampleNumber\", \"status\", \"successPercentage\", \"testName\", \"testSetDuration\", \"totalClients\"];\n\nfor (var label of labels) {\n    if (bar_strings.indexOf(label) === -1) {\n        names.push(label);\n        data.push(output[label]);\n    } else {\n        info.push(output[label]);\n        infonames.push(label);\n    }\n}\n\nmsg.payload = [{\n    \"series\": [\"\"],\n    \"data\": [data],\n    \"labels\": names\n}]\nmsg.output = output;\nmsg.info = info;\nmsg.infonames = infonames;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1320,
+        "y": 200,
+        "wires": [
+            [
+                "64dfe8550d53a5d7",
+                "31d41503b7c12d57",
+                "0a27b94cca034c18"
+            ]
+        ]
+    },
+    {
+        "id": "3d81d506b99714a5",
+        "type": "debug",
+        "z": "139be3927a5a98ed",
+        "name": "debug 83",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1220,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "31d41503b7c12d57",
+        "type": "debug",
+        "z": "139be3927a5a98ed",
+        "name": "debug 84",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1400,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "2aac51eed2934f89",
+        "type": "ui_template",
+        "z": "139be3927a5a98ed",
+        "group": "b02f8cff8e770c31",
+        "name": "",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "format": "<p><strong>Action</strong>: {{msg.info[0]}}</p>\n<p><strong>Actual Start Time</strong>: {{msg.info[1]}}</p>\n<p><strong>Client Number</strong>: {{msg.info[2]}}</p>\n<p><strong>Cold Starts</strong>: {{msg.info[3]}}</p>\n<p><strong>Global Start Time</strong>: {{msg.info[4]}}</p>\n<p><strong>Launch Generator Delay</strong>: {{msg.info[5]}}</p>\n<p><strong>Memory</strong>: {{msg.info[6]}}</p>\n<p><strong>Method Payload</strong>: {{msg.info[7]}}</p>\n<p><strong>Other Info</strong>: {{msg.info[8]}}</p>\n<p><strong>Parent Sample Time</strong>: {{msg.info[9]}}</p>\n<p><strong>Sample Number</strong>: {{msg.info[10]}}</p>\n<p><strong>Status</strong>: {{msg.info[11]}}</p>\n<p><strong>Success Percentage</strong>: {{msg.info[12]}}</p>\n<p><strong>Test Name</strong>: {{msg.info[13]}}</p>\n<p><strong>Test Set Duration</strong>: {{msg.info[14]}}</p>\n<p><strong>Total Clients</strong>: {{msg.info[15]}}</p>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1540,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "0a27b94cca034c18",
+        "type": "function",
+        "z": "139be3927a5a98ed",
+        "name": "Convert date-time",
+        "func": "var info = msg.info;\nvar infonames = msg.infonames;\n\nfunction convert_time(date) {\n    var timestamp = date;  // Given timestamp in milliseconds\n\n    // Create a new Date object from the timestamp\n    var newdate = new Date(timestamp);\n\n    // Extract the date and time in the desired format\n    var dateString = newdate.toISOString().split('T')[0];\n    var timeString = newdate.toISOString().split('T')[1].split('.')[0];\n\n    // Combine the date and time\n    var datetimeString = dateString + ', ' + timeString;\n\n    return datetimeString;\n}\n\ninfo[infonames.indexOf(\"actualStartTime\")] = convert_time(info[infonames.indexOf(\"actualStartTime\")]);\n\ninfo[infonames.indexOf(\"globalStartTime\")] = convert_time(info[infonames.indexOf(\"globalStartTime\")]);\n\ninfo[infonames.indexOf(\"parentSampleTime\")] = convert_time(info[infonames.indexOf(\"parentSampleTime\")]);\n\nmsg.info = info;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1310,
+        "y": 260,
+        "wires": [
+            [
+                "2aac51eed2934f89",
+                "8f46f707fc6c241a"
+            ]
+        ]
+    },
+    {
+        "id": "8f46f707fc6c241a",
+        "type": "debug",
+        "z": "139be3927a5a98ed",
+        "name": "debug 85",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1380,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "b02f8cff8e770c31",
+        "type": "ui_group",
+        "name": "ID Selection",
+        "tab": "d315769c5ea188b3",
+        "order": 1,
+        "disp": true,
+        "width": "20",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "d315769c5ea188b3",
+        "type": "ui_tab",
+        "name": "LoadGen Tab",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    }
+]
