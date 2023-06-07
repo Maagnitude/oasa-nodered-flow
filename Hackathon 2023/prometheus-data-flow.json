@@ -1,6 +1,6 @@
 [
     {
-        "id": "cc537f46a5874e0b",
+        "id": "139be3927a5a98ed",
         "type": "tab",
         "label": "Hackathon Visualization of Performance Data",
         "disabled": false,
@@ -8,9 +8,9 @@
         "env": []
     },
     {
-        "id": "ef012fa417a0ca14",
+        "id": "822af1a4f4d419da",
         "type": "inject",
-        "z": "cc537f46a5874e0b",
+        "z": "139be3927a5a98ed",
         "name": "",
         "props": [
             {
@@ -28,18 +28,18 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 180,
-        "y": 220,
+        "x": 520,
+        "y": 200,
         "wires": [
             [
-                "914f8a64fe106b93"
+                "62af5c48293e4067"
             ]
         ]
     },
     {
-        "id": "914f8a64fe106b93",
+        "id": "62af5c48293e4067",
         "type": "http request",
-        "z": "cc537f46a5874e0b",
+        "z": "139be3927a5a98ed",
         "name": "",
         "method": "GET",
         "ret": "obj",
@@ -52,20 +52,20 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 350,
-        "y": 220,
+        "x": 690,
+        "y": 200,
         "wires": [
             [
-                "f68cafb7e7c62475",
-                "02a247ae527544a1"
+                "cf7dd6b4ef7a6d8b",
+                "e66e10b87a12f272"
             ]
         ]
     },
     {
-        "id": "f68cafb7e7c62475",
+        "id": "cf7dd6b4ef7a6d8b",
         "type": "debug",
-        "z": "cc537f46a5874e0b",
-        "name": "debug 50",
+        "z": "139be3927a5a98ed",
+        "name": "debug 86",
         "active": true,
         "tosidebar": true,
         "console": false,
@@ -73,50 +73,50 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 400,
+        "x": 740,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "ee68dece4c7bb913",
+        "type": "comment",
+        "z": "139be3927a5a98ed",
+        "name": "PROMETHEUS-DATA-FLOW",
+        "info": "",
+        "x": 500,
         "y": 160,
         "wires": []
     },
     {
-        "id": "05c9fc8e17608206",
-        "type": "comment",
-        "z": "cc537f46a5874e0b",
-        "name": "PROMETHEUS",
-        "info": "",
-        "x": 160.1041717529297,
-        "y": 175.11114501953125,
-        "wires": []
-    },
-    {
-        "id": "eff0e2bddedacfc4",
+        "id": "2db2a402a86915e1",
         "type": "ui_template",
-        "z": "cc537f46a5874e0b",
+        "z": "139be3927a5a98ed",
         "group": "393b4bf3dd81dd9a",
         "name": "",
         "order": 3,
         "width": 0,
         "height": 0,
-        "format": "<p><b>Activation id</b>: {{msg.selected.activationid}}</p>\n<p><b>Test Function Payload</b>: {{msg.selected.testFunctionPayload}}</p>\n<p><b>Action Name</b>: {{msg.selected.actionname}}</p>\n<p><b>Owendpoint</b>: {{msg.selected.owendpoint}}</p>\n<p><b>Branchname</b>: {{msg.selected.branchname}}</p>\n<p><b>Flow</b>: {{msg.selected.flow}}</p>\n<br>",
+        "format": "<p><b>Activation id</b>: {{msg.selected.activationid}}</p>\n<p><b>Test Function Payload</b>: {{msg.selected.testFunctionPayload}}</p>\n<p><b>Action Name</b>: {{msg.selected.actionname}}</p>\n<p><b>Ownedpoint</b>: {{msg.selected.owendpoint}}</p>\n<p><b>Branchname</b>: {{msg.selected.branchname}}</p>\n<p><b>Flow</b>: {{msg.selected.flow}}</p>\n<br>",
         "storeOutMessages": true,
         "fwdInMessages": true,
         "resendOnRefresh": true,
         "templateScope": "local",
         "className": "",
-        "x": 1160,
-        "y": 280,
+        "x": 500,
+        "y": 520,
         "wires": [
             []
         ]
     },
     {
-        "id": "2d8e356f4f78c823",
+        "id": "33c2136d9918dd0d",
         "type": "ui_chart",
-        "z": "cc537f46a5874e0b",
+        "z": "139be3927a5a98ed",
         "name": "",
         "group": "393b4bf3dd81dd9a",
         "order": 2,
-        "width": "6",
-        "height": "12",
+        "width": "14",
+        "height": "9",
         "label": "Prometheus Data Visualization",
         "chartType": "horizontalBar",
         "legend": "false",
@@ -125,7 +125,7 @@
         "nodata": "",
         "dot": true,
         "ymin": "0",
-        "ymax": "1000",
+        "ymax": "3000",
         "removeOlder": 1,
         "removeOlderPoints": "",
         "removeOlderUnit": "3600",
@@ -146,35 +146,36 @@
         "outputs": 1,
         "useDifferentColor": false,
         "className": "",
-        "x": 1470,
-        "y": 220,
+        "x": 750,
+        "y": 520,
         "wires": [
             []
         ]
     },
     {
-        "id": "c0e9e2bff6d3f8d7",
+        "id": "ab44667dd4fb6f86",
         "type": "function",
-        "z": "cc537f46a5874e0b",
+        "z": "139be3927a5a98ed",
         "name": "Create bar chart data",
-        "func": "var indata = msg.selected;\nmsg.payload = [];\nmsg.profile = [];\n\nvar labels = [];\nvar data = [];\n\nmsg.newdata = []; // Initialize newdata as an empty array\n\n\nvar cpu = indata.cpu;\nvar memory = indata.memory;\nvar networkReceived = indata.networkReceived;\nvar networkTransmitted = indata.networkTransmitted;\nvar fsWrites = indata.fsWrites;\nvar fsReads = indata.fsReads;\n\nmsg.newdata = {\n    \"CPU\": cpu,\n    \"Memory\": memory,\n    \"NetworkReceived\": networkReceived,\n    \"NetworkTransmitted\": networkTransmitted,\n    \"fsWrites\": fsWrites,\n    \"fsReads\": fsReads\n};\n\nmsg.payload = msg.newdata;\n\nlabels = Object.keys(msg.newdata);\ndata = Object.values(msg.newdata);\n\nmsg.payload = [{\n    \"series\": [\"\"],\n    \"data\": [data],\n    \"labels\": labels\n}];\n\n\nreturn msg;",
+        "func": "var indata = msg.selected;\nmsg.payload = [];\nmsg.profile = [];\n\nvar labels = [];\nvar data = [];\n\nmsg.newdata = []; // Initialize newdata as an empty array\n\nvar cpu = indata.cpu;\nvar memory = indata.memory;\nvar networkReceived = indata.networkReceived;\nvar networkTransmitted = indata.networkTransmitted;\nvar fsWrites = indata.fsWrites;\nvar fsReads = indata.fsReads;\n\nmsg.newdata = {\n    \"CPU (x10^-4)\": cpu * 10000,\n    \"Memory (x10^4)\": memory / 10000,\n    \"NetworkReceived\": networkReceived,\n    \"NetworkTransmitted\": networkTransmitted,\n    \"fsWrites (x10^3)\": fsWrites / 1000,\n    \"fsReads (x10^4)\": fsReads / 10000\n};\n\nmsg.payload = msg.newdata;\n\nlabels = Object.keys(msg.newdata);\ndata = Object.values(msg.newdata);\n\nmsg.payload = [{\n    \"series\": [\"\"],\n    \"data\": [data],\n    \"labels\": labels\n}];\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1220,
-        "y": 220,
+        "x": 740,
+        "y": 380,
         "wires": [
             [
-                "2d8e356f4f78c823"
+                "33c2136d9918dd0d",
+                "b92e754673bbbcf6"
             ]
         ]
     },
     {
-        "id": "3305b7e1ad0995f3",
+        "id": "a3982d2e74c7bed4",
         "type": "ui_dropdown",
-        "z": "cc537f46a5874e0b",
+        "z": "139be3927a5a98ed",
         "name": "",
         "label": "",
         "tooltip": "",
@@ -196,18 +197,18 @@
         "topic": "topic",
         "topicType": "msg",
         "className": "",
-        "x": 820,
-        "y": 220,
+        "x": 740,
+        "y": 260,
         "wires": [
             [
-                "1466d570418e3079"
+                "c56f7869c97f2354"
             ]
         ]
     },
     {
-        "id": "02a247ae527544a1",
+        "id": "e66e10b87a12f272",
         "type": "function",
-        "z": "cc537f46a5874e0b",
+        "z": "139be3927a5a98ed",
         "name": "Extract activationid for dropdown",
         "func": "global.set(\"Info\", msg.payload);\n\nvar data = msg.payload;\nvar options = [];\n\nmsg.newdata = []; // Initialize newdata as an empty array\n\nfor (var i = 0; i < data.length; i++) {\n    var activationid = data[i].activationid;\n\n    options.push(activationid);\n}\nmsg.options = options;\n\nreturn msg;\n",
         "outputs": 1,
@@ -215,18 +216,18 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 590,
-        "y": 220,
+        "x": 510,
+        "y": 260,
         "wires": [
             [
-                "3305b7e1ad0995f3"
+                "a3982d2e74c7bed4"
             ]
         ]
     },
     {
-        "id": "1466d570418e3079",
+        "id": "c56f7869c97f2354",
         "type": "function",
-        "z": "cc537f46a5874e0b",
+        "z": "139be3927a5a98ed",
         "name": "Selected Data",
         "func": "var info = global.get(\"Info\");\nvar selected;\n\nfor(var data of info) {\n    if( data.activationid === msg.payload) {\n        selected = data;\n    }\n}\n\nmsg.selected = selected; \n\nreturn msg;",
         "outputs": 1,
@@ -234,21 +235,21 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1000,
-        "y": 220,
+        "x": 440,
+        "y": 380,
         "wires": [
             [
-                "d7c02f77f8907c95",
-                "eff0e2bddedacfc4",
-                "c0e9e2bff6d3f8d7"
+                "4078b444658a8158",
+                "2db2a402a86915e1",
+                "ab44667dd4fb6f86"
             ]
         ]
     },
     {
-        "id": "d7c02f77f8907c95",
+        "id": "4078b444658a8158",
         "type": "debug",
-        "z": "cc537f46a5874e0b",
-        "name": "debug 56",
+        "z": "139be3927a5a98ed",
+        "name": "debug 87",
         "active": true,
         "tosidebar": true,
         "console": false,
@@ -257,8 +258,24 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1060,
-        "y": 160,
+        "x": 400,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "b92e754673bbbcf6",
+        "type": "debug",
+        "z": "139be3927a5a98ed",
+        "name": "debug 88",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 800,
+        "y": 320,
         "wires": []
     },
     {
@@ -268,7 +285,7 @@
         "tab": "f1188de2ec5bc89b",
         "order": 1,
         "disp": true,
-        "width": "6",
+        "width": "16",
         "collapse": false,
         "className": ""
     },
