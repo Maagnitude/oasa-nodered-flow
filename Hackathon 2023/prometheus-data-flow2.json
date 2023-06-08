@@ -1,0 +1,294 @@
+[
+    {
+        "id": "139be3927a5a98ed",
+        "type": "tab",
+        "label": "Hackathon Visualization of Performance Data",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "822af1a4f4d419da",
+        "type": "inject",
+        "z": "139be3927a5a98ed",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 620,
+        "y": 240,
+        "wires": [
+            [
+                "62af5c48293e4067"
+            ]
+        ]
+    },
+    {
+        "id": "62af5c48293e4067",
+        "type": "http request",
+        "z": "139be3927a5a98ed",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://raw.githubusercontent.com/gkousiouris/2ndPHYSICSHackathon/main/dataFilesForVisualization/prometheus-data.json",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 790,
+        "y": 240,
+        "wires": [
+            [
+                "cf7dd6b4ef7a6d8b",
+                "e66e10b87a12f272"
+            ]
+        ]
+    },
+    {
+        "id": "cf7dd6b4ef7a6d8b",
+        "type": "debug",
+        "z": "139be3927a5a98ed",
+        "name": "debug 86",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 840,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "ee68dece4c7bb913",
+        "type": "comment",
+        "z": "139be3927a5a98ed",
+        "name": "PROMETHEUS-DATA-FLOW",
+        "info": "",
+        "x": 600,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "2db2a402a86915e1",
+        "type": "ui_template",
+        "z": "139be3927a5a98ed",
+        "group": "393b4bf3dd81dd9a",
+        "name": "",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "format": "<p><b>Activation id</b>: {{msg.selected.activationid}}</p>\n<p><b>Test Function Payload</b>: {{msg.selected.testFunctionPayload}}</p>\n<p><b>Action Name</b>: {{msg.selected.actionname}}</p>\n<p><b>Ownedpoint</b>: {{msg.selected.owendpoint}}</p>\n<p><b>Branchname</b>: {{msg.selected.branchname}}</p>\n<p><b>Flow</b>: {{msg.selected.flow}}</p>\n<br>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 600,
+        "y": 560,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "33c2136d9918dd0d",
+        "type": "ui_chart",
+        "z": "139be3927a5a98ed",
+        "name": "",
+        "group": "393b4bf3dd81dd9a",
+        "order": 2,
+        "width": "14",
+        "height": "9",
+        "label": "Prometheus Data Visualization",
+        "chartType": "horizontalBar",
+        "legend": "false",
+        "xformat": "auto",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": true,
+        "ymin": "0",
+        "ymax": "3000",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 850,
+        "y": 560,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ab44667dd4fb6f86",
+        "type": "function",
+        "z": "139be3927a5a98ed",
+        "name": "Create bar chart data",
+        "func": "var indata = msg.selected;\nmsg.payload = [];\nmsg.profile = [];\n\nvar labels = [];\nvar data = [];\n\nmsg.newdata = []; // Initialize newdata as an empty array\n\nvar cpu = indata.cpu;\nvar memory = indata.memory;\nvar networkReceived = indata.networkReceived;\nvar networkTransmitted = indata.networkTransmitted;\nvar fsWrites = indata.fsWrites;\nvar fsReads = indata.fsReads;\n\nmsg.newdata = {\n    \"CPU (x10^-4)\": cpu * 10000,\n    \"Memory (x10^4)\": memory / 10000,\n    \"NetworkReceived\": networkReceived,\n    \"NetworkTransmitted\": networkTransmitted,\n    \"fsWrites (x10^3)\": fsWrites / 1000,\n    \"fsReads (x10^4)\": fsReads / 10000\n};\n\nmsg.payload = msg.newdata;\n\nlabels = Object.keys(msg.newdata);\ndata = Object.values(msg.newdata);\n\nmsg.payload = [{\n    \"series\": [\"\"],\n    \"data\": [data],\n    \"labels\": labels\n}];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 840,
+        "y": 420,
+        "wires": [
+            [
+                "33c2136d9918dd0d",
+                "b92e754673bbbcf6"
+            ]
+        ]
+    },
+    {
+        "id": "a3982d2e74c7bed4",
+        "type": "ui_dropdown",
+        "z": "139be3927a5a98ed",
+        "name": "",
+        "label": "",
+        "tooltip": "",
+        "place": "Select option",
+        "group": "393b4bf3dd81dd9a",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 840,
+        "y": 300,
+        "wires": [
+            [
+                "c56f7869c97f2354"
+            ]
+        ]
+    },
+    {
+        "id": "e66e10b87a12f272",
+        "type": "function",
+        "z": "139be3927a5a98ed",
+        "name": "Extract activationid for dropdown",
+        "func": "global.set(\"Info\", msg.payload);\n\nvar data = msg.payload;\nvar options = [];\n\nmsg.newdata = []; // Initialize newdata as an empty array\n\nfor (var i = 0; i < data.length; i++) {\n    var activationid = data[i].activationid;\n\n    options.push(activationid);\n}\nmsg.options = options;\n\nreturn msg;\n",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 610,
+        "y": 300,
+        "wires": [
+            [
+                "a3982d2e74c7bed4"
+            ]
+        ]
+    },
+    {
+        "id": "c56f7869c97f2354",
+        "type": "function",
+        "z": "139be3927a5a98ed",
+        "name": "Selected Data",
+        "func": "var info = global.get(\"Info\");\nvar selected;\n\nfor(var data of info) {\n    if( data.activationid === msg.payload) {\n        selected = data;\n    }\n}\n\nmsg.selected = selected; \n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 420,
+        "wires": [
+            [
+                "4078b444658a8158",
+                "2db2a402a86915e1",
+                "ab44667dd4fb6f86"
+            ]
+        ]
+    },
+    {
+        "id": "4078b444658a8158",
+        "type": "debug",
+        "z": "139be3927a5a98ed",
+        "name": "debug 87",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "selected",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 500,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "b92e754673bbbcf6",
+        "type": "debug",
+        "z": "139be3927a5a98ed",
+        "name": "debug 88",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 900,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "393b4bf3dd81dd9a",
+        "type": "ui_group",
+        "name": "Prometheus Visualization",
+        "tab": "f1188de2ec5bc89b",
+        "order": 1,
+        "disp": true,
+        "width": "16",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "f1188de2ec5bc89b",
+        "type": "ui_tab",
+        "name": "Prometheus Tab",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    }
+]
