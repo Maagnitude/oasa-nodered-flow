@@ -1,0 +1,1618 @@
+[
+    {
+        "id": "0c8445c1741cb21a",
+        "type": "tab",
+        "label": "HORIZONTAL",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "43bbba2ec5d3c519",
+        "type": "http request",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "Authorization",
+                "keyValue": "",
+                "valueType": "other",
+                "valueValue": "Token 877396539fb01c71b5e67b591aab469f28adf5ab"
+            }
+        ],
+        "x": 790,
+        "y": 260,
+        "wires": [
+            [
+                "39a9a5c11602dff2"
+            ]
+        ]
+    },
+    {
+        "id": "4c5dbdb26982bfb5",
+        "type": "inject",
+        "z": "0c8445c1741cb21a",
+        "d": true,
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "5",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 260,
+        "wires": [
+            [
+                "d99aa4cb2d1ef695"
+            ]
+        ]
+    },
+    {
+        "id": "a465da0ab0796425",
+        "type": "comment",
+        "z": "0c8445c1741cb21a",
+        "name": "Getting only last day info",
+        "info": "",
+        "x": 270,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "e6e6d4d32c6f7247",
+        "type": "debug",
+        "z": "0c8445c1741cb21a",
+        "name": "json debug",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 930,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "93c6e74253d0473b",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "Filter Data",
+        "func": "var oasa_info = new Array();\nvar station_list = [\"ΟΜOΝΟΙΑ\", \"ΣΥΝTΑΓΜΑ\", \"ΜΟΝΑΣTΗΡΑKΙ\", \"ΣTΑΘΜOΣ ΛΑΡΙΣΗΣ\", \"ΑTTΙKΗ\", \"ΑΕΡΟΔΡΟΜΙΟ\"];\nvar data = msg.payload;\n\nfor (var i = 0; i < data.length; i++) {\n    if (station_list.includes(data[i].dv_platenum_station)) {\n        var validations = data[i].dv_validations;\n        var station = data[i].dv_platenum_station;\n        var date_hour = data[i].date_hour;\n        msg.payload = {};\n        msg.payload.validations = validations;\n        msg.payload.station = station;\n        msg.payload.date_hour = date_hour;\n        node.send([msg, null]) //send new msg to output\n    }\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1110,
+        "y": 260,
+        "wires": [
+            [
+                "89b33cb039f6e4a1",
+                "7c8ec1b455f51fe2"
+            ]
+        ]
+    },
+    {
+        "id": "39a9a5c11602dff2",
+        "type": "json",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 950,
+        "y": 260,
+        "wires": [
+            [
+                "e6e6d4d32c6f7247",
+                "93c6e74253d0473b"
+            ]
+        ]
+    },
+    {
+        "id": "89b33cb039f6e4a1",
+        "type": "debug",
+        "z": "0c8445c1741cb21a",
+        "name": "stations of interest debug",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload.station",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1170,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "ec1ef7b0dd522602",
+        "type": "file",
+        "z": "0c8445c1741cb21a",
+        "name": "Station Info CSV",
+        "filename": "C:\\Users\\yiwrg\\Desktop\\Projects\\Node-Red\\oasa.csv",
+        "filenameType": "str",
+        "appendNewline": false,
+        "createDir": false,
+        "overwriteFile": "false",
+        "encoding": "none",
+        "x": 1450,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "b596b3ea979e52fc",
+        "type": "comment",
+        "z": "0c8445c1741cb21a",
+        "name": "Write csv to a file",
+        "info": "",
+        "x": 1440,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "ad434776e8182f64",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "INSERT INTO oasa (with ID)",
+        "func": "var values = msg.payload.split(',');\nvar date_hour = values[0];\nvar station = values[1];\nvar validations = values[2];\n\nmsg.topic = 'INSERT INTO oasa (date_hour, station, validations) VALUES (\"' + date_hour + '\", \"' + station + '\", ' + validations + ')';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1480,
+        "y": 320,
+        "wires": [
+            [
+                "e469526e9d5ef555"
+            ]
+        ]
+    },
+    {
+        "id": "e469526e9d5ef555",
+        "type": "link out",
+        "z": "0c8445c1741cb21a",
+        "name": "link out 2",
+        "mode": "link",
+        "links": [
+            "059542e6a2db4594",
+            "f646e904b923107e"
+        ],
+        "x": 1645,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "d99aa4cb2d1ef695",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "Date Formatting",
+        "func": "var timestamp = msg.payload;  // Given timestamp in milliseconds\n\n// Convert milliseconds to seconds\nvar seconds = Math.floor(timestamp / 1000);\n\n// Create a new Date object from the seconds\nvar date = new Date(seconds * 1000);\n\n// Extract the date in the desired format\nmsg.today = date.toISOString().split('T')[0];\n\ndate.setDate(date.getDate() - 1);\n\nmsg.yesterday = date.toISOString().split('T')[0];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 260,
+        "wires": [
+            [
+                "5e07a4a5e9162fe3"
+            ]
+        ]
+    },
+    {
+        "id": "5e07a4a5e9162fe3",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "URL Building",
+        "func": "var dateFrom = msg.yesterday;  // Get the previous date from the previous flow\nvar dateTo = msg.today;  // Get the current date from the previous flow\n\n// Construct the URL with the date parameters\nvar url = \"https://data.gov.gr/api/v1/query/oasa_ridership?date_from=\" + dateFrom + \"&date_to=\" + dateTo;\n\nmsg.url = url;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 610,
+        "y": 260,
+        "wires": [
+            [
+                "43bbba2ec5d3c519"
+            ]
+        ]
+    },
+    {
+        "id": "7c8ec1b455f51fe2",
+        "type": "csv",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "sep": ",",
+        "hdrin": false,
+        "hdrout": "none",
+        "multi": "one",
+        "ret": "\\n",
+        "temp": "date_hour, station, validations",
+        "skip": "0",
+        "strings": true,
+        "include_empty_strings": "",
+        "include_null_values": "",
+        "x": 1270,
+        "y": 260,
+        "wires": [
+            [
+                "ad434776e8182f64"
+            ]
+        ]
+    },
+    {
+        "id": "34dcc11dcba077a5",
+        "type": "inject",
+        "z": "0c8445c1741cb21a",
+        "d": true,
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 160,
+        "wires": [
+            [
+                "99ecf34e851d261a"
+            ]
+        ]
+    },
+    {
+        "id": "e5152d9e86932d4d",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "URL Building",
+        "func": "var dateFrom = msg.yesterday;  // Get the previous date from the previous flow\nvar dateTo = msg.today;  // Get the current date from the previous flow\n\n// Construct the URL with the date parameters\nvar url = \"https://data.gov.gr/api/v1/query/oasa_ridership?date_from=\" + dateFrom + \"&date_to=\" + dateTo;\n\nmsg.url = url;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 610,
+        "y": 160,
+        "wires": [
+            [
+                "43bbba2ec5d3c519"
+            ]
+        ]
+    },
+    {
+        "id": "99ecf34e851d261a",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "Date Formatting",
+        "func": "var timestamp = msg.payload;  // Given timestamp in milliseconds\n\n// Convert milliseconds to seconds\nvar seconds = Math.floor(timestamp / 1000);\n\n// Create a new Date object from the seconds\nvar date = new Date(seconds * 1000);\n\n// Extract the date in the desired format\nmsg.today = date.toISOString().split('T')[0];\n\ndate.setDate(date.getDate() - 6);\n\nmsg.yesterday = date.toISOString().split('T')[0];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 160,
+        "wires": [
+            [
+                "e5152d9e86932d4d"
+            ]
+        ]
+    },
+    {
+        "id": "8d195c636cd20c95",
+        "type": "comment",
+        "z": "0c8445c1741cb21a",
+        "name": "Getting the last 7 days info",
+        "info": "",
+        "x": 270,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "0d3c30aafe44afdd",
+        "type": "inject",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "date_from",
+                "v": "2023-04-08",
+                "vt": "str"
+            },
+            {
+                "p": "date_to",
+                "v": "2023-05-08",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 500,
+        "wires": [
+            [
+                "bce2c3f9463ec184"
+            ]
+        ]
+    },
+    {
+        "id": "ab5baa8061e32ba4",
+        "type": "http request",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "https://data.gov.gr/api/v1/query/oasa_ridership?date_from={{{date_from}}}&date_to={{{date_to}}}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "Authorization",
+                "keyValue": "",
+                "valueType": "other",
+                "valueValue": "Token 877396539fb01c71b5e67b591aab469f28adf5ab"
+            }
+        ],
+        "x": 910,
+        "y": 500,
+        "wires": [
+            [
+                "c3ffd9f423e6f89d"
+            ]
+        ]
+    },
+    {
+        "id": "7dd65d4e94b7d130",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "INSERT INTO clusters",
+        "func": "var query = \"INSERT INTO clusters(station, day, highcentroid, lowcentroid) VALUES \"\nfor (var object of msg.oasa_info) {\n    for (var object2 of object.days) {\n        var max = object2.clusters[0].centroid[0];\n        var min = object2.clusters[1].centroid[0];\n        if (min > max) {\n            [max, min] = [min, max]\n        }\n        max = max.toFixed(2);\n        min = min.toFixed(2);\n        query += `(\"${object.station}\", \"${object2.day}\", \"${max}\", \"${min}\"),`\n    }\n}\nmsg = {}\nmsg.topic = query.slice(0, -1)\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1600,
+        "y": 500,
+        "wires": [
+            [
+                "96aa24fc33b64093"
+            ]
+        ]
+    },
+    {
+        "id": "c3ffd9f423e6f89d",
+        "type": "json",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 1070,
+        "y": 500,
+        "wires": [
+            [
+                "6373c25fe68d5b57"
+            ]
+        ]
+    },
+    {
+        "id": "6373c25fe68d5b57",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "Filter Data",
+        "func": "var station_list = [\"ΟΜOΝΟΙΑ\", \"ΣΥΝTΑΓΜΑ\", \"ΜΟΝΑΣTΗΡΑKΙ\", \"ΣTΑΘΜOΣ ΛΑΡΙΣΗΣ\", \"ΑTTΙKΗ\", \"ΑΕΡΟΔΡΟΜΙΟ\"];\nvar days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\nglobal.set(\"date_from\", msg.date_from);\nglobal.set(\"date_to\", msg.date_to);\nvar data = msg.payload;\nvar oasa_info = new Array();\nvar stations = [];\n\nfor (var object of data) {\n    if (station_list.includes(object.dv_platenum_station)) {\n        var day = days[new Date(object.date_hour.substring(0, 10)).getDay()];\n        var station_idx = stations.findIndex(x => x.station === object.dv_platenum_station);\n\n        if (station_idx === -1) {\n            stations.push({\n                \"station\": object.dv_platenum_station,\n                \"days\": [{\n                    \"day\": day,\n                    \"hours\": [{\n                        \"hour\": object.date_hour.substring(11, 19),\n                        \"validations\": object.dv_validations\n                    }]\n                }]\n            })\n        } else {\n            var day_idx = stations[station_idx].days.findIndex(x => x.day === day);\n\n            if (day_idx === -1) {\n                stations[station_idx].days.push({\n                    \"day\": day, \n                    \"hours\": [{\n                    \"hour\": object.date_hour.substring(11, 19),\n                    \"validations\": object.dv_validations\n                    }]\n                })\n            } else {\n                var hour_idx = stations[station_idx].days[day_idx].hours.findIndex(x => x.hour === object.date_hour.substring(11, 19));\n\n                if (hour_idx === -1) {\n                    stations[station_idx].days[day_idx].hours.push({\n                        \"hour\": object.date_hour.substring(11, 19),\n                        \"validations\": object.dv_validations\n                    })\n                }\n            }\n        }\n    }\n}\n\nmsg.oasa_info = stations;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1230,
+        "y": 500,
+        "wires": [
+            [
+                "e576ba6bd15a7698"
+            ]
+        ]
+    },
+    {
+        "id": "e576ba6bd15a7698",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "K-Means",
+        "func": "var clusterMaker = context.global.clusters;\n\nclusterMaker.k(2);\nclusterMaker.iterations(750);\n\nlet clusters = [];\n\nfor (var object of msg.oasa_info) {\n    for (var object2 of object.days) {\n        var validation_list = [];\n        for (var hour of object2.hours) {\n            validation_list.push([hour.validations]);\n        }\n        clusterMaker.data(validation_list);\n        object2.clusters = clusterMaker.clusters();\n        object2.clusters.sort(function (a, b) { return parseFloat(a.centroid) - parseFloat(b.centroid); });\n    }\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1400,
+        "y": 500,
+        "wires": [
+            [
+                "30a50fcdbf9e9362",
+                "7dd65d4e94b7d130"
+            ]
+        ]
+    },
+    {
+        "id": "30a50fcdbf9e9362",
+        "type": "debug",
+        "z": "0c8445c1741cb21a",
+        "name": "debug 92",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1440,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "96aa24fc33b64093",
+        "type": "sqlite",
+        "z": "0c8445c1741cb21a",
+        "mydb": "f0773fa283cae9e6",
+        "sqlquery": "batch",
+        "sql": "",
+        "name": "Station Info DB",
+        "x": 1820,
+        "y": 500,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "3be8d7f4d97f6273",
+        "type": "comment",
+        "z": "0c8445c1741cb21a",
+        "name": "Last 30 days",
+        "info": "",
+        "x": 230,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "bce2c3f9463ec184",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "DROP TABLE clusters",
+        "func": "msg.topic = 'DROP TABLE IF EXISTS clusters';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 440,
+        "wires": [
+            [
+                "056faa8b603803fa"
+            ]
+        ]
+    },
+    {
+        "id": "c524418d1da34d55",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "CREATE TABLE clusters",
+        "func": "msg.topic = 'CREATE TABLE clusters (clusterid INTEGER PRIMARY KEY AUTOINCREMENT, station TEXT, day TEXT, highcentroid TEXT, lowcentroid TEXT)';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 490,
+        "y": 500,
+        "wires": [
+            [
+                "9208ce4452047c3c"
+            ]
+        ]
+    },
+    {
+        "id": "9208ce4452047c3c",
+        "type": "sqlite",
+        "z": "0c8445c1741cb21a",
+        "mydb": "f0773fa283cae9e6",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "Station Info DB",
+        "x": 720,
+        "y": 500,
+        "wires": [
+            [
+                "ab5baa8061e32ba4"
+            ]
+        ]
+    },
+    {
+        "id": "056faa8b603803fa",
+        "type": "sqlite",
+        "z": "0c8445c1741cb21a",
+        "mydb": "f0773fa283cae9e6",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "Station Info DB on DROP",
+        "x": 750,
+        "y": 440,
+        "wires": [
+            [
+                "c524418d1da34d55"
+            ]
+        ]
+    },
+    {
+        "id": "e242205a5211d1b6",
+        "type": "comment",
+        "z": "0c8445c1741cb21a",
+        "name": "TO BE WRITTEN IN REPORT",
+        "info": "",
+        "x": 480,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "d632c99bc7685adb",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "SELECT *",
+        "func": "msg.topic = 'SELECT * FROM clusters';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 680,
+        "wires": [
+            [
+                "9d9b38420a45bae0"
+            ]
+        ]
+    },
+    {
+        "id": "9d9b38420a45bae0",
+        "type": "sqlite",
+        "z": "0c8445c1741cb21a",
+        "mydb": "f0773fa283cae9e6",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "Station Info DB",
+        "x": 600,
+        "y": 680,
+        "wires": [
+            [
+                "4a10d6323e80f38b"
+            ]
+        ]
+    },
+    {
+        "id": "e255add3536067ce",
+        "type": "inject",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 680,
+        "wires": [
+            [
+                "d632c99bc7685adb"
+            ]
+        ]
+    },
+    {
+        "id": "4cb46c85932cbcc9",
+        "type": "comment",
+        "z": "0c8445c1741cb21a",
+        "name": "SELECT Data to AMQ out",
+        "info": "",
+        "x": 270,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "0d761cd33a2cef03",
+        "type": "amqp-out",
+        "z": "0c8445c1741cb21a",
+        "name": "High Cluster AMQ",
+        "broker": "698020603d8a2907",
+        "exchangeName": "oasaexchange",
+        "exchangeType": "direct",
+        "exchangeRoutingKey": "highcentroidchart",
+        "exchangeRoutingKeyType": "str",
+        "exchangeDurable": true,
+        "amqpProperties": "{ \"headers\": {} }",
+        "rpcTimeoutMilliseconds": 3000,
+        "outputs": 0,
+        "x": 1010,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "e9372ff77d1d4444",
+        "type": "amqp-in",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "broker": "698020603d8a2907",
+        "prefetch": 0,
+        "noAck": true,
+        "exchangeName": "oasaexchange",
+        "exchangeType": "direct",
+        "exchangeRoutingKey": "highcentroidchart",
+        "exchangeDurable": true,
+        "queueName": "highcentroidqueue",
+        "queueExclusive": false,
+        "queueDurable": true,
+        "queueAutoDelete": false,
+        "headers": "{}",
+        "x": 290,
+        "y": 800,
+        "wires": [
+            [
+                "1d8d925bff8e766d"
+            ]
+        ]
+    },
+    {
+        "id": "6d0a148d22084037",
+        "type": "ui_chart",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "group": "e09760222c355a5a",
+        "order": 2,
+        "width": 19,
+        "height": 9,
+        "label": "Station HighCentroids/Day Chart",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "x",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": true,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "4",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "604800",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#1dfa00",
+            "#ff7f0e",
+            "#207e20",
+            "#fb09db",
+            "#f01414",
+            "#ffb4b3",
+            "#9467bd",
+            "#d9fa00"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1510,
+        "y": 800,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "884bc091d16473f7",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "Create highcentroid chart payload",
+        "func": "var dataset = global.get(\"clusterdb\");\n\nvar labels = [];\n\nif (msg.payload.length == 0) {\n    for (var object of dataset) {\n        if (!labels.includes(object.station)) {\n            labels.push(object.station);\n        }\n    }\n} else {\n    for (var i = 0; i < msg.payload.length; i++) {\n        labels.push(msg.payload[i]);\n    }\n}\n\n\nvar data = new Array();\nvar data2 = new Array();\nfor (var i = 0; i < labels.length; i++) {\n    data.push(new Array(7).fill(0));\n    data2.push(new Array(7).fill(0));\n}\n\nvar days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\n\nfor (var stationName of labels) {\n    for (var aday of days) {\n        for (var z = 0; z < dataset.length; z++) {\n            if (dataset[z].day == aday && dataset[z].station == stationName) {\n                data[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].highcentroid });\n                data2[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].lowcentroid });\n            }\n        }\n    }\n}\n\nglobal.set(\"LowData\", data2);\n\nmsg.payload = [{\n    \"series\": labels,\n    \"data\": data,\n    \"labels\": labels\n}]\n\nglobal.set(\"highCentroidChart\", msg.payload);\n\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1160,
+        "y": 800,
+        "wires": [
+            [
+                "12a05b4f1092c9d5",
+                "6d0a148d22084037"
+            ]
+        ]
+    },
+    {
+        "id": "12a05b4f1092c9d5",
+        "type": "debug",
+        "z": "0c8445c1741cb21a",
+        "name": "debug 110",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1230,
+        "y": 740,
+        "wires": []
+    },
+    {
+        "id": "07bd4be5ab1a10cf",
+        "type": "ui_dropdown",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "label": "",
+        "tooltip": "",
+        "place": "All stations shown",
+        "group": "e09760222c355a5a",
+        "order": 1,
+        "width": 19,
+        "height": 1,
+        "passthru": true,
+        "multiple": true,
+        "options": [],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 900,
+        "y": 800,
+        "wires": [
+            [
+                "884bc091d16473f7",
+                "cbfb3767ab4ab401"
+            ]
+        ]
+    },
+    {
+        "id": "ae03815204685238",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "Global data",
+        "func": "msg.options = [\"ΟΜOΝΟΙΑ\", \"ΣΥΝTΑΓΜΑ\", \"ΜΟΝΑΣTΗΡΑKΙ\", \"ΣTΑΘΜOΣ ΛΑΡΙΣΗΣ\", \"ΑTTΙKΗ\", \"ΑΕΡΟΔΡΟΜΙΟ\"];\nglobal.set(\"clusterdb\", msg.payload);\nmsg.payload = [];\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 800,
+        "wires": [
+            [
+                "0c536489897469a5",
+                "07bd4be5ab1a10cf"
+            ]
+        ]
+    },
+    {
+        "id": "0c536489897469a5",
+        "type": "debug",
+        "z": "0c8445c1741cb21a",
+        "name": "debug 112",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 700,
+        "y": 740,
+        "wires": []
+    },
+    {
+        "id": "cbfb3767ab4ab401",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "Create lowcentroid chart payload",
+        "func": "var dataset = global.get(\"clusterdb\");\n\nvar labels = [];\n\nif (msg.payload.length == 0) {\n    for (var object of dataset) {\n        if (!labels.includes(object.station)) {\n            labels.push(object.station);\n        }\n    }\n} else {\n    for (var i = 0; i < msg.payload.length; i++) {\n        labels.push(msg.payload[i]);\n    }\n}\n\n\nvar data = new Array();\nvar data2 = new Array();\nfor (var i = 0; i < labels.length; i++) {\n    data.push(new Array(7).fill(0));\n    data2.push(new Array(7).fill(0));\n}\n\nvar days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\n\nfor (var stationName of labels) {\n    for (var aday of days) {\n        for (var z = 0; z < dataset.length; z++) {\n            if (dataset[z].day == aday && dataset[z].station == stationName) {\n                data[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].highcentroid });\n                data2[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].lowcentroid });\n            }\n        }\n    }\n}\n\nglobal.set(\"HighData\", data)\n\nmsg.payload = [{\n    \"series\": labels,\n    \"data\": data2,\n    \"labels\": labels\n}]\n\nglobal.set(\"lowCentroidChart\", msg.payload);\n\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1160,
+        "y": 880,
+        "wires": [
+            [
+                "d8fa3ce75af11024"
+            ]
+        ]
+    },
+    {
+        "id": "d8fa3ce75af11024",
+        "type": "ui_chart",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "group": "e09760222c355a5a",
+        "order": 3,
+        "width": 19,
+        "height": 9,
+        "label": "Station LowCentroids/Day Chart",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "x",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": true,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "4",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "604800",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#1dfa00",
+            "#ff7f0e",
+            "#207e20",
+            "#fb09db",
+            "#f01414",
+            "#ffb4b3",
+            "#9467bd",
+            "#d9fa00"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1510,
+        "y": 880,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "899401577312466b",
+        "type": "ui_button",
+        "z": "0c8445c1741cb21a",
+        "name": "Clear Charts",
+        "group": "e09760222c355a5a",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Clear Charts",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 1230,
+        "y": 840,
+        "wires": [
+            [
+                "3d379c38c36f387e"
+            ]
+        ]
+    },
+    {
+        "id": "3d379c38c36f387e",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "empty payload",
+        "func": "msg.payload = [];\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1460,
+        "y": 840,
+        "wires": [
+            [
+                "6d0a148d22084037",
+                "d8fa3ce75af11024"
+            ]
+        ]
+    },
+    {
+        "id": "4a10d6323e80f38b",
+        "type": "json",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": true,
+        "x": 810,
+        "y": 680,
+        "wires": [
+            [
+                "0d761cd33a2cef03"
+            ]
+        ]
+    },
+    {
+        "id": "1d8d925bff8e766d",
+        "type": "json",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 510,
+        "y": 800,
+        "wires": [
+            [
+                "ae03815204685238"
+            ]
+        ]
+    },
+    {
+        "id": "1d46f3b6ad1b5f82",
+        "type": "inject",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "date_from",
+                "v": "2023-06-05",
+                "vt": "str"
+            },
+            {
+                "p": "date_to",
+                "v": "2023-06-06",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 1060,
+        "wires": [
+            [
+                "eec4aa3237659588"
+            ]
+        ]
+    },
+    {
+        "id": "d562de43687fa118",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "Filter Data",
+        "func": "var station_list = [\"ΟΜOΝΟΙΑ\", \"ΣΥΝTΑΓΜΑ\", \"ΜΟΝΑΣTΗΡΑKΙ\", \"ΣTΑΘΜOΣ ΛΑΡΙΣΗΣ\", \"ΑTTΙKΗ\", \"ΑΕΡΟΔΡΟΜΙΟ\"];\nvar days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\nglobal.set(\"date_from\", msg.date_from);\nglobal.set(\"date_to\", msg.date_to);\nvar data = msg.payload;\nvar oasa_info = new Array();\nvar stations = [];\n\nfor (var object of data) {\n    if (station_list.includes(object.dv_platenum_station)) {\n        var day = days[new Date(object.date_hour.substring(0, 10)).getDay()];\n        var station_idx = stations.findIndex(x => x.station === object.dv_platenum_station);\n\n        if (station_idx === -1) {\n            stations.push({\n                \"station\": object.dv_platenum_station,\n                \"days\": [{\n                    \"day\": day,\n                    \"hours\": [{\n                        \"hour\": object.date_hour.substring(11, 19),\n                        \"validations\": object.dv_validations\n                    }]\n                }]\n            })\n        } else {\n            var day_idx = stations[station_idx].days.findIndex(x => x.day === day);\n\n            if (day_idx === -1) {\n                stations[station_idx].days.push({\n                    \"day\": day, \n                    \"hours\": [{\n                    \"hour\": object.date_hour.substring(11, 19),\n                    \"validations\": object.dv_validations\n                    }]\n                })\n            } else {\n                var hour_idx = stations[station_idx].days[day_idx].hours.findIndex(x => x.hour === object.date_hour.substring(11, 19));\n\n                if (hour_idx === -1) {\n                    stations[station_idx].days[day_idx].hours.push({\n                        \"hour\": object.date_hour.substring(11, 19),\n                        \"validations\": object.dv_validations\n                    })\n                }\n            }\n        }\n    }\n}\n\nmsg.oasa_info = stations;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 770,
+        "y": 1060,
+        "wires": [
+            [
+                "b6343dbec81dc8dd",
+                "100db009285eb6c4"
+            ]
+        ]
+    },
+    {
+        "id": "a9affab771afcff3",
+        "type": "json",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 590,
+        "y": 1060,
+        "wires": [
+            [
+                "d562de43687fa118"
+            ]
+        ]
+    },
+    {
+        "id": "b6343dbec81dc8dd",
+        "type": "debug",
+        "z": "0c8445c1741cb21a",
+        "name": "debug 116",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 770,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "eec4aa3237659588",
+        "type": "http request",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "https://data.gov.gr/api/v1/query/oasa_ridership?date_from={{{date_from}}}&date_to={{{date_to}}}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "Authorization",
+                "keyValue": "",
+                "valueType": "other",
+                "valueValue": "Token 877396539fb01c71b5e67b591aab469f28adf5ab"
+            }
+        ],
+        "x": 410,
+        "y": 1060,
+        "wires": [
+            [
+                "a9affab771afcff3"
+            ]
+        ]
+    },
+    {
+        "id": "100db009285eb6c4",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "function 12",
+        "func": "var days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\n\nvar stationvals = {\n    \"day\": days[new Date(msg.date_to).getDay()],\n    \"vals\": []\n};\n\nfor (var object of msg.oasa_info) {\n    var totalVals = 0;\n    var counter = 0;\n    for (var object2 of object.days) {\n        for (var hour of object2.hours) {\n            totalVals += hour.validations;\n            counter ++;\n        }   \n    }\n    totalVals /= counter;\n    totalVals = totalVals.toFixed(2);\n    stationvals[\"vals\"].push({\n        \"station\": object.station,\n        \"totalvals\": totalVals\n    })\n}\nmsg.stationvals = stationvals;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 970,
+        "y": 1060,
+        "wires": [
+            [
+                "928a434e0a8f1154",
+                "af674ee6a42c58a1"
+            ]
+        ]
+    },
+    {
+        "id": "928a434e0a8f1154",
+        "type": "debug",
+        "z": "0c8445c1741cb21a",
+        "name": "debug 117",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 970,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "af674ee6a42c58a1",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "function 13",
+        "func": "var dbdata = global.get(\"clusterdb\");\nvar stationvals = msg.stationvals;\n\nvar dbcentroids = {};\n\nfor (var obj of dbdata) {\n    if (obj.day == stationvals.day) {\n        dbcentroids[obj.station] = {\n            \"high\": obj.highcentroid,\n            \"low\": obj.lowcentroid\n        }\n    }\n}\n\nvar newstationvals = [];\n\nfor (var obj of stationvals.vals) {\n    var high = parseFloat(dbcentroids[obj.station][\"high\"]);\n    var low = parseFloat(dbcentroids[obj.station][\"low\"]);\n    var hcdist = Math.abs(high - obj.totalvals);\n    var lcdist = Math.abs(low - obj.totalvals);\n\n    // if (hcdist > lcdist) {\n    //     cluster = 1;\n    // }\n\n    var mo = (high + low) / 2;\n    var mdist = Math.abs(mo - obj.totalvals);\n\n    var cluster = 3;\n    if (hcdist > lcdist && mdist > lcdist) {\n        cluster = 1;\n    } else if (hcdist > mdist && mdist < lcdist) {\n        cluster = 2;\n    }\n\n\n    newstationvals.push({\n        \"station\": obj.station,\n        \"cluster\": cluster\n    })\n}\n\nmsg.centroids = dbdata;\nmsg.payload = newstationvals;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1170,
+        "y": 1060,
+        "wires": [
+            [
+                "b051b9a6c8a4dcdc",
+                "5515bd101de88734"
+            ]
+        ]
+    },
+    {
+        "id": "5515bd101de88734",
+        "type": "debug",
+        "z": "0c8445c1741cb21a",
+        "name": "debug 118",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1170,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "b051b9a6c8a4dcdc",
+        "type": "json",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 1330,
+        "y": 1060,
+        "wires": [
+            [
+                "e7dc44c8f37a3ca0"
+            ]
+        ]
+    },
+    {
+        "id": "e7dc44c8f37a3ca0",
+        "type": "amqp-out",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "broker": "698020603d8a2907",
+        "exchangeName": "clusterexchange",
+        "exchangeType": "direct",
+        "exchangeRoutingKey": "clusterkey",
+        "exchangeRoutingKeyType": "str",
+        "exchangeDurable": true,
+        "amqpProperties": "{ \"headers\": {} }",
+        "rpcTimeoutMilliseconds": 3000,
+        "outputs": 0,
+        "x": 1520,
+        "y": 1060,
+        "wires": []
+    },
+    {
+        "id": "f831163032b555fd",
+        "type": "amqp-in",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "broker": "698020603d8a2907",
+        "prefetch": 0,
+        "noAck": true,
+        "exchangeName": "clusterexchange",
+        "exchangeType": "direct",
+        "exchangeRoutingKey": "clusterkey",
+        "exchangeDurable": true,
+        "queueName": "newclusterqueue",
+        "queueExclusive": false,
+        "queueDurable": true,
+        "queueAutoDelete": false,
+        "headers": "{}",
+        "x": 280,
+        "y": 1180,
+        "wires": [
+            [
+                "2430b1ba532e5626"
+            ]
+        ]
+    },
+    {
+        "id": "2430b1ba532e5626",
+        "type": "json",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 530,
+        "y": 1180,
+        "wires": [
+            [
+                "8970d324325dc9bb"
+            ]
+        ]
+    },
+    {
+        "id": "05ec12a89379ad3a",
+        "type": "ui_chart",
+        "z": "0c8445c1741cb21a",
+        "name": "",
+        "group": "35ce7a80bdacc407",
+        "order": 19,
+        "width": 8,
+        "height": 9,
+        "label": "New Day Station Clusters",
+        "chartType": "horizontalBar",
+        "legend": "true",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "0",
+        "ymax": "3",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 630,
+        "y": 1240,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "8970d324325dc9bb",
+        "type": "function",
+        "z": "0c8445c1741cb21a",
+        "name": "function 14",
+        "func": "var clusterdata = msg.payload;\n\nvar labels = [];\nvar data = [];\n\nfor (var obj of clusterdata) {\n    labels.push(obj.station);\n    data.push(obj.cluster);\n}\n\nmsg.payload = [{\n    \"series\": labels,\n    \"data\": [data],\n    \"labels\": labels\n}]\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 1180,
+        "wires": [
+            [
+                "05ec12a89379ad3a",
+                "753f0e6a79918eb9",
+                "f84d724cd01c677a",
+                "1569aec7324e5404",
+                "84eb9d4e2d514c0f",
+                "60781ec50ef94d92",
+                "828f891105304d0d",
+                "23fec4d97ae1cbde"
+            ]
+        ]
+    },
+    {
+        "id": "f84d724cd01c677a",
+        "type": "ui_gauge",
+        "z": "0c8445c1741cb21a",
+        "name": "ΑΤΤΙΚΗ",
+        "group": "35ce7a80bdacc407",
+        "order": 1,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[0]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][0]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 1020,
+        "y": 1120,
+        "wires": []
+    },
+    {
+        "id": "753f0e6a79918eb9",
+        "type": "debug",
+        "z": "0c8445c1741cb21a",
+        "name": "debug 120",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 770,
+        "y": 1120,
+        "wires": []
+    },
+    {
+        "id": "1569aec7324e5404",
+        "type": "ui_gauge",
+        "z": "0c8445c1741cb21a",
+        "name": "ΑΕΡΟΔΡΟΜΙΟ",
+        "group": "35ce7a80bdacc407",
+        "order": 2,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[1]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][1]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 1040,
+        "y": 1160,
+        "wires": []
+    },
+    {
+        "id": "84eb9d4e2d514c0f",
+        "type": "ui_gauge",
+        "z": "0c8445c1741cb21a",
+        "name": "ΜΟΝΑΣΤΗΡΑΚΙ",
+        "group": "35ce7a80bdacc407",
+        "order": 7,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[2]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][2]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 1040,
+        "y": 1200,
+        "wires": []
+    },
+    {
+        "id": "60781ec50ef94d92",
+        "type": "ui_gauge",
+        "z": "0c8445c1741cb21a",
+        "name": "ΟΜΟΝΟΙΑ",
+        "group": "35ce7a80bdacc407",
+        "order": 8,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[3]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][3]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 1030,
+        "y": 1240,
+        "wires": []
+    },
+    {
+        "id": "828f891105304d0d",
+        "type": "ui_gauge",
+        "z": "0c8445c1741cb21a",
+        "name": "ΣΤΑΘΜΟΣ ΛΑΡΙΣΗΣ",
+        "group": "35ce7a80bdacc407",
+        "order": 13,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[4]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][4]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 1060,
+        "y": 1280,
+        "wires": []
+    },
+    {
+        "id": "23fec4d97ae1cbde",
+        "type": "ui_gauge",
+        "z": "0c8445c1741cb21a",
+        "name": "ΣΥΝΤΑΓΜΑ",
+        "group": "35ce7a80bdacc407",
+        "order": 14,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[5]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][5]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 1030,
+        "y": 1320,
+        "wires": []
+    },
+    {
+        "id": "7963208c06e65574",
+        "type": "comment",
+        "z": "0c8445c1741cb21a",
+        "name": "Filter Data - AMQ out",
+        "info": "",
+        "x": 260,
+        "y": 1020,
+        "wires": []
+    },
+    {
+        "id": "262c03d07531cbb2",
+        "type": "comment",
+        "z": "0c8445c1741cb21a",
+        "name": "AMQ in to Gauges",
+        "info": "",
+        "x": 250,
+        "y": 1140,
+        "wires": []
+    },
+    {
+        "id": "24c09e298fad8758",
+        "type": "comment",
+        "z": "0c8445c1741cb21a",
+        "name": "AMQ in to Charts",
+        "info": "",
+        "x": 240,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "f0773fa283cae9e6",
+        "type": "sqlitedb",
+        "db": "C:\\Users\\yiwrg\\Desktop\\Projects\\Node-Red\\stationdb.sqlite",
+        "mode": "RWC"
+    },
+    {
+        "id": "698020603d8a2907",
+        "type": "amqp-broker",
+        "name": "RabbitMQOASA",
+        "host": "localhost",
+        "port": "5672",
+        "vhost": "",
+        "tls": false,
+        "credsFromSettings": false
+    },
+    {
+        "id": "e09760222c355a5a",
+        "type": "ui_group",
+        "name": "Station Selection",
+        "tab": "87369cca35093f10",
+        "order": 1,
+        "disp": true,
+        "width": 19,
+        "collapse": true,
+        "className": ""
+    },
+    {
+        "id": "35ce7a80bdacc407",
+        "type": "ui_group",
+        "name": "Validation Gauge",
+        "tab": "87369cca35093f10",
+        "order": 2,
+        "disp": true,
+        "width": 11,
+        "collapse": true,
+        "className": ""
+    },
+    {
+        "id": "87369cca35093f10",
+        "type": "ui_tab",
+        "name": "Cluster Charts",
+        "icon": "dashboard",
+        "order": 8,
+        "disabled": false,
+        "hidden": false
+    }
+]
