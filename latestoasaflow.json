@@ -1982,7 +1982,7 @@
         "id": "96aa24fc33b64093",
         "type": "sqlite",
         "z": "b8a89f9e37253535",
-        "mydb": "f0773fa283cae9e6",
+        "mydb": "3858b5bfacaf9b7f",
         "sqlquery": "batch",
         "sql": "",
         "name": "Batch Insert in clusters of Station Info DB",
@@ -2012,7 +2012,7 @@
         "id": "056faa8b603803fa",
         "type": "sqlite",
         "z": "b8a89f9e37253535",
-        "mydb": "f0773fa283cae9e6",
+        "mydb": "3858b5bfacaf9b7f",
         "sqlquery": "msg.topic",
         "sql": "",
         "name": "DROP clusters of Station Info DB",
@@ -2073,7 +2073,7 @@
         "id": "9208ce4452047c3c",
         "type": "sqlite",
         "z": "b8a89f9e37253535",
-        "mydb": "f0773fa283cae9e6",
+        "mydb": "3858b5bfacaf9b7f",
         "sqlquery": "msg.topic",
         "sql": "",
         "name": "CREATE clusters in Station Info DB",
@@ -2102,27 +2102,11 @@
         "id": "9d9b38420a45bae0",
         "type": "sqlite",
         "z": "b8a89f9e37253535",
-        "mydb": "f0773fa283cae9e6",
+        "mydb": "3858b5bfacaf9b7f",
         "sqlquery": "msg.topic",
         "sql": "",
         "name": "SELECT from clusters of Station Info DB",
         "x": 540,
-        "y": 380,
-        "wires": [
-            [
-                "4a10d6323e80f38b"
-            ]
-        ]
-    },
-    {
-        "id": "4a10d6323e80f38b",
-        "type": "json",
-        "z": "b8a89f9e37253535",
-        "name": "",
-        "property": "payload",
-        "action": "",
-        "pretty": true,
-        "x": 790,
         "y": 380,
         "wires": [
             [
@@ -2139,7 +2123,7 @@
         "links": [
             "c5af1160059a3191"
         ],
-        "x": 895,
+        "x": 755,
         "y": 380,
         "wires": []
     },
@@ -2372,7 +2356,7 @@
         "y": 260,
         "wires": [
             [
-                "344cba8de8e318d9"
+                "ce0b96831ed7662f"
             ]
         ]
     },
@@ -2570,22 +2554,6 @@
         ]
     },
     {
-        "id": "344cba8de8e318d9",
-        "type": "json",
-        "z": "ac5694073504d421",
-        "name": "",
-        "property": "payload",
-        "action": "",
-        "pretty": false,
-        "x": 950,
-        "y": 260,
-        "wires": [
-            [
-                "5ab755a9a219ede6"
-            ]
-        ]
-    },
-    {
         "id": "13e7ee7e3168abbe",
         "type": "json",
         "z": "ac5694073504d421",
@@ -2688,6 +2656,22 @@
         "x": 1250,
         "y": 460,
         "wires": []
+    },
+    {
+        "id": "ce0b96831ed7662f",
+        "type": "json",
+        "z": "ac5694073504d421",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 950,
+        "y": 260,
+        "wires": [
+            [
+                "5ab755a9a219ede6"
+            ]
+        ]
     },
     {
         "id": "3cd9e4fee7d3cec1",
@@ -3838,6 +3822,12 @@
                 "fc2245d905dd23e2"
             ]
         ]
+    },
+    {
+        "id": "3858b5bfacaf9b7f",
+        "type": "sqlitedb",
+        "db": "C:\\Users\\yiwrg\\Desktop\\Projects\\Node-Red\\stationdb.sqlite",
+        "mode": "RWC"
     },
     {
         "id": "f0773fa283cae9e6",
