@@ -1,0 +1,4402 @@
+[
+    {
+        "id": "3bcdaec0cecda0ca",
+        "type": "tab",
+        "label": "oasa-basic-flow",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "983ed9fbabbb993d",
+        "type": "inject",
+        "z": "3bcdaec0cecda0ca",
+        "name": "3-month-injection",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "86400",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 440,
+        "wires": [
+            [
+                "c42892a879c3bbb8"
+            ]
+        ]
+    },
+    {
+        "id": "affe731dedf19d89",
+        "type": "http request",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Get data for last 3 months",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://data.gov.gr/api/v1/query/oasa_ridership?date_from={{{date_from}}}&date_to={{{date_to}}}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "Authorization",
+                "keyValue": "",
+                "valueType": "other",
+                "valueValue": "Token 877396539fb01c71b5e67b591aab469f28adf5ab"
+            }
+        ],
+        "x": 790,
+        "y": 520,
+        "wires": [
+            [
+                "6c1aed11b7ca6a0f"
+            ]
+        ]
+    },
+    {
+        "id": "606d64627193a2cd",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "INSERT INTO clusters (batch)",
+        "func": "var query = \"INSERT INTO clusters(station, day, highcentroid, middlecentroid, lowcentroid) VALUES \"\nfor (var object of msg.oasa_info) {\n    for (var object2 of object.days) {\n        var max = object2.clusters[0].centroid[0];\n        var mid = object2.clusters[1].centroid[0];\n        var min = object2.clusters[2].centroid[0];\n\n        var middle;\n        var low = Math.min(min, max, mid);\n        var high = Math.max(min, max, mid);\n\n        if (max !== low && max !== high) {\n            middle = max;\n        } else if (mid !== low && mid !== high) {\n            middle = mid;\n        } else {\n            middle = min;\n        }\n        \n        high = high.toFixed(2);\n        low = low.toFixed(2);\n        middle = middle.toFixed(2);\n        query += `(\"${object.station}\", \"${object2.day}\", \"${high}\", \"${middle}\", \"${low}\"),`\n    }\n}\nmsg = {}\nmsg.topic = query.slice(0, -1)\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1490,
+        "y": 520,
+        "wires": [
+            [
+                "871f57c1f38d3b09"
+            ]
+        ]
+    },
+    {
+        "id": "6c1aed11b7ca6a0f",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Filter Data",
+        "func": "var station_list = [\"ΟΜOΝΟΙΑ\", \"ΣΥΝTΑΓΜΑ\", \"ΜΟΝΑΣTΗΡΑKΙ\", \"ΣTΑΘΜOΣ ΛΑΡΙΣΗΣ\", \"ΑTTΙKΗ\", \"ΑΕΡΟΔΡΟΜΙΟ\"];\nvar days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\nglobal.set(\"date_from\", msg.date_from);\nglobal.set(\"date_to\", msg.date_to);\nvar data = msg.payload;\nvar oasa_info = new Array();\nvar stations = [];\n\nfor (var object of data) {\n    if (station_list.includes(object.dv_platenum_station)) {\n        var day = days[new Date(object.date_hour.substring(0, 10)).getDay()];\n        var station_idx = stations.findIndex(x => x.station === object.dv_platenum_station);\n\n        if (station_idx === -1) {\n            stations.push({\n                \"station\": object.dv_platenum_station,\n                \"days\": [{\n                    \"day\": day,\n                    \"hours\": [{\n                        \"hour\": object.date_hour.substring(11, 19),\n                        \"validations\": object.dv_validations\n                    }]\n                }]\n            })\n        } else {\n            var day_idx = stations[station_idx].days.findIndex(x => x.day === day);\n\n            if (day_idx === -1) {\n                stations[station_idx].days.push({\n                    \"day\": day, \n                    \"hours\": [{\n                    \"hour\": object.date_hour.substring(11, 19),\n                    \"validations\": object.dv_validations\n                    }]\n                })\n            } else {\n                var hour_idx = stations[station_idx].days[day_idx].hours.findIndex(x => x.hour === object.date_hour.substring(11, 19));\n\n                if (hour_idx === -1) {\n                    stations[station_idx].days[day_idx].hours.push({\n                        \"hour\": object.date_hour.substring(11, 19),\n                        \"validations\": object.dv_validations\n                    })\n                }\n            }\n        }\n    }\n}\n\nmsg.oasa_info = stations;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1010,
+        "y": 520,
+        "wires": [
+            [
+                "b064b916562522a2",
+                "8615c8279d2fb56d"
+            ]
+        ]
+    },
+    {
+        "id": "b064b916562522a2",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "K-Means (3 clusters)",
+        "func": "var clusterMaker = context.global.clusters;\n\nclusterMaker.k(3);\nclusterMaker.iterations(750);\n\nlet clusters = [];\n\nfor (var object of msg.oasa_info) {\n    for (var object2 of object.days) {\n        var validation_list = [];\n        for (var hour of object2.hours) {\n            validation_list.push([hour.validations]);\n        }\n        clusterMaker.data(validation_list);\n        object2.clusters = clusterMaker.clusters();\n        object2.clusters.sort(function (a, b) { return parseFloat(a.centroid) - parseFloat(b.centroid); });\n    }\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1220,
+        "y": 520,
+        "wires": [
+            [
+                "606d64627193a2cd",
+                "de6d0f787435a6fd"
+            ]
+        ]
+    },
+    {
+        "id": "d248ccd448524a87",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Last 3 months",
+        "info": "",
+        "x": 190,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "e15108a1c121d302",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "DROP TABLE clusters",
+        "func": "msg.topic = 'DROP TABLE IF EXISTS clusters';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 720,
+        "y": 440,
+        "wires": [
+            [
+                "27c42332bab7c0e4"
+            ]
+        ]
+    },
+    {
+        "id": "55ad1b8e9bb528d0",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "CREATE TABLE clusters",
+        "func": "msg.topic = 'CREATE TABLE clusters (clusterid INTEGER PRIMARY KEY AUTOINCREMENT, station TEXT, day TEXT, highcentroid TEXT, middlecentroid TEXT, lowcentroid TEXT)';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 790,
+        "y": 480,
+        "wires": [
+            [
+                "909dc22c5e776c7b"
+            ]
+        ]
+    },
+    {
+        "id": "f840ac50cc7d50e4",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "SELECT *",
+        "func": "msg.topic = 'SELECT * FROM clusters';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 700,
+        "wires": [
+            [
+                "a68fde9050179782"
+            ]
+        ]
+    },
+    {
+        "id": "9ff5aebb1737096e",
+        "type": "inject",
+        "z": "3bcdaec0cecda0ca",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 700,
+        "wires": [
+            [
+                "f840ac50cc7d50e4"
+            ]
+        ]
+    },
+    {
+        "id": "6760476d5c2a308f",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "SELECT Data to AMQ out",
+        "info": "",
+        "x": 270,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "c2e29273b8b46607",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Create highcentroid chart payload",
+        "func": "var dataset = global.get(\"clusterdb\");\n\nvar labels = [];\n\nif (msg.payload.length == 0) {\n    for (var object of dataset) {\n        if (!labels.includes(object.station)) {\n            labels.push(object.station);\n        }\n    }\n} else {\n    for (var i = 0; i < msg.payload.length; i++) {\n        labels.push(msg.payload[i]);\n    }\n}\n\n\nvar data = new Array();\nvar data2 = new Array();\nvar data3 = new Array();\n\nfor (var i = 0; i < labels.length; i++) {\n    data.push(new Array(7).fill(0));\n    data2.push(new Array(7).fill(0));\n    data3.push(new Array(7).fill(0));\n}\n\nvar days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\n\nfor (var stationName of labels) {\n    for (var aday of days) {\n        for (var z = 0; z < dataset.length; z++) {\n            if (dataset[z].day == aday && dataset[z].station == stationName) {\n                data[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].highcentroid });\n                data2[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].lowcentroid });\n                data3[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].middlecentroid });\n            }\n        }\n    }\n}\n\nglobal.set(\"LowData\", data2);\nglobal.set(\"MiddleData\", data3);\n\nmsg.payload = [{\n    \"series\": labels,\n    \"data\": data,\n    \"labels\": labels\n}]\n\nglobal.set(\"highCentroidChart\", msg.payload);\n\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 940,
+        "y": 720,
+        "wires": [
+            [
+                "7bc9a8563c82bd8c"
+            ]
+        ]
+    },
+    {
+        "id": "16b589698bc709b0",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Global data",
+        "func": "msg.options = [\"ΟΜOΝΟΙΑ\", \"ΣΥΝTΑΓΜΑ\", \"ΜΟΝΑΣTΗΡΑKΙ\", \"ΣTΑΘΜOΣ ΛΑΡΙΣΗΣ\", \"ΑTTΙKΗ\", \"ΑΕΡΟΔΡΟΜΙΟ\"];\nglobal.set(\"clusterdb\", msg.payload);\nmsg.payload = [];\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 800,
+        "wires": [
+            [
+                "dad9f2b1e558590d"
+            ]
+        ]
+    },
+    {
+        "id": "404b087f50765817",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Create lowcentroid chart payload",
+        "func": "var dataset = global.get(\"clusterdb\");\n\nvar labels = [];\n\nif (msg.payload.length == 0) {\n    for (var object of dataset) {\n        if (!labels.includes(object.station)) {\n            labels.push(object.station);\n        }\n    }\n} else {\n    for (var i = 0; i < msg.payload.length; i++) {\n        labels.push(msg.payload[i]);\n    }\n}\n\n\nvar data = new Array();\nvar data2 = new Array();\nvar data3 = new Array();\n\nfor (var i = 0; i < labels.length; i++) {\n    data.push(new Array(7).fill(0));\n    data2.push(new Array(7).fill(0));\n    data3.push(new Array(7).fill(0));\n}\n\nvar days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\n\nfor (var stationName of labels) {\n    for (var aday of days) {\n        for (var z = 0; z < dataset.length; z++) {\n            if (dataset[z].day == aday && dataset[z].station == stationName) {\n                data[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].highcentroid });\n                data2[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].lowcentroid });\n                data3[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].middlecentroid });\n            }\n        }\n    }\n}\n\nglobal.set(\"HighData\", data)\nglobal.set(\"MiddleData\", data3);\n\nmsg.payload = [{\n    \"series\": labels,\n    \"data\": data2,\n    \"labels\": labels\n}]\n\nglobal.set(\"lowCentroidChart\", msg.payload);\n\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 940,
+        "y": 880,
+        "wires": [
+            [
+                "e4c689ee8ffac9b7"
+            ]
+        ]
+    },
+    {
+        "id": "d07ed287efcb65a9",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "empty payload",
+        "func": "msg.payload = [];\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1260,
+        "y": 760,
+        "wires": [
+            [
+                "7bc9a8563c82bd8c",
+                "f05a14c5c832083d",
+                "e4c689ee8ffac9b7"
+            ]
+        ]
+    },
+    {
+        "id": "87af5dfc2ca1ceea",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Filter Data",
+        "func": "var station_list = [\"ΟΜOΝΟΙΑ\", \"ΣΥΝTΑΓΜΑ\", \"ΜΟΝΑΣTΗΡΑKΙ\", \"ΣTΑΘΜOΣ ΛΑΡΙΣΗΣ\", \"ΑTTΙKΗ\", \"ΑΕΡΟΔΡΟΜΙΟ\"];\nvar days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\nvar data = msg.payload;\nvar oasa_info = new Array();\nvar stations = [];\n\nfor (var object of data) {\n    if (station_list.includes(object.dv_platenum_station)) {\n        var day = days[new Date(object.date_hour.substring(0, 10)).getDay()];\n        var station_idx = stations.findIndex(x => x.station === object.dv_platenum_station);\n\n        if (station_idx === -1) {\n            stations.push({\n                \"station\": object.dv_platenum_station,\n                \"days\": [{\n                    \"day\": day,\n                    \"hours\": [{\n                        \"hour\": object.date_hour.substring(11, 19),\n                        \"validations\": object.dv_validations\n                    }]\n                }]\n            })\n        } else {\n            var day_idx = stations[station_idx].days.findIndex(x => x.day === day);\n\n            if (day_idx === -1) {\n                stations[station_idx].days.push({\n                    \"day\": day, \n                    \"hours\": [{\n                    \"hour\": object.date_hour.substring(11, 19),\n                    \"validations\": object.dv_validations\n                    }]\n                })\n            } else {\n                var hour_idx = stations[station_idx].days[day_idx].hours.findIndex(x => x.hour === object.date_hour.substring(11, 19));\n\n                if (hour_idx === -1) {\n                    stations[station_idx].days[day_idx].hours.push({\n                        \"hour\": object.date_hour.substring(11, 19),\n                        \"validations\": object.dv_validations\n                    })\n                }\n            }\n        }\n    }\n}\n\nmsg.oasa_info = stations;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 950,
+        "y": 1120,
+        "wires": [
+            [
+                "cfb05880cdfe017a"
+            ]
+        ]
+    },
+    {
+        "id": "cfb05880cdfe017a",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Getting totalvals/day for each station",
+        "func": "var days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\nvar date_from = global.get(\"date_from\")\n\nvar stationvals = {\n    \"day\": days[new Date(date_from).getDay()],\n    \"vals\": []\n};\n\nfor (var object of msg.oasa_info) {\n    var totalVals = 0;\n    var counter = 0;\n    for (var object2 of object.days) {\n        for (var hour of object2.hours) {\n            totalVals += hour.validations;\n            counter ++;\n        }   \n    }\n    totalVals /= counter;\n    totalVals = totalVals.toFixed(2);\n    stationvals[\"vals\"].push({\n        \"station\": object.station,\n        \"totalvals\": totalVals\n    })\n}\nmsg.stationvals = stationvals;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1210,
+        "y": 1120,
+        "wires": [
+            [
+                "e58926e139e9964c"
+            ]
+        ]
+    },
+    {
+        "id": "e58926e139e9964c",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Calculate centroids",
+        "func": "var dbdata = global.get(\"clusterdb\");\nvar stationvals = msg.stationvals;\n\nvar dbcentroids = {};\n\nfor (var obj of dbdata) {\n    if (obj.day == stationvals.day) {\n        dbcentroids[obj.station] = {\n            \"high\": obj.highcentroid,\n            \"middle\": obj.middlecentroid,\n            \"low\": obj.lowcentroid\n        }\n    }\n}\n\nvar newstationvals = [];\n\nfor (var obj of stationvals.vals) {\n    var high = parseFloat(dbcentroids[obj.station][\"high\"]);\n    var middle = parseFloat(dbcentroids[obj.station][\"middle\"]);\n    var low = parseFloat(dbcentroids[obj.station][\"low\"]);\n    var hcdist = Math.abs(high - obj.totalvals);\n    var mdist = Math.abs(middle - obj.totalvals);\n    var lcdist = Math.abs(low - obj.totalvals);\n\n    var mdist = Math.abs(middle - obj.totalvals);\n\n    var cluster = 3;\n    if (hcdist > lcdist && mdist > lcdist) {\n        cluster = 1;\n    } else if (hcdist > mdist && mdist < lcdist) {\n        cluster = 2;\n    }\n\n\n    newstationvals.push({\n        \"station\": obj.station,\n        \"cluster\": cluster\n    })\n}\n\nmsg.centroids = dbdata;\nmsg.payload = newstationvals;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1270,
+        "y": 1180,
+        "wires": [
+            [
+                "a5ccb5f11a8d27aa"
+            ]
+        ]
+    },
+    {
+        "id": "787d4875b3a757ad",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Create gauges payload",
+        "func": "var clusterdata = msg.payload;\n\nvar labels = [];\nvar data = [];\n\nfor (var obj of clusterdata) {\n    labels.push(obj.station);\n    data.push(obj.cluster);\n}\n\nmsg.payload = [{\n    \"series\": labels,\n    \"data\": [data],\n    \"labels\": labels\n}]\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 1200,
+        "wires": [
+            [
+                "98ce6184a677d888",
+                "2e346f0a4901e35b"
+            ]
+        ]
+    },
+    {
+        "id": "f645ea85b11807c2",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Filter Data - AMQ out",
+        "info": "",
+        "x": 180,
+        "y": 1020,
+        "wires": []
+    },
+    {
+        "id": "bdb8a9af9728a6cc",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "AMQ in to Gauges",
+        "info": "",
+        "x": 190,
+        "y": 1160,
+        "wires": []
+    },
+    {
+        "id": "96a7d6f09cb85d88",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "AMQ in to Charts",
+        "info": "",
+        "x": 200,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "98ce6184a677d888",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Conclusions to be sent",
+        "func": "var results = msg.payload[0];\nvar date_from = global.get(\"date_from\");\nvar conclusions = [];\nvar message1;\nvar message2;\nvar message3;\n\nfor (var i = 0; i < results.series.length; i++) {\n    if (results.data[0][i] == 1) {\n        message1 = \"Station \" + results.series[i]; \n        message2 = \"was\";\n        message3 = \"not so crowded\";\n        conclusions.push({\n            \"date\": date_from,\n            \"conclusion\": {\n                \"message1\": message1,\n                \"message2\": message2,\n                \"message3\": message3\n            }\n        })\n    } else if (results.data[0][i] == 2) {\n        message1 = \"Station \" + results.series[i];\n        message2 = \"was\";\n        message3 = \"a bit crowded\";\n        conclusions.push({\n            \"date\": date_from,\n            \"conclusion\": {\n                \"message1\": message1,\n                \"message2\": message2,\n                \"message3\": message3\n            }\n        })\n    } else {\n        message1 = \"Station \" + results.series[i];\n        message2 = \"was\";\n        message3 = \"too much crowded\";\n        conclusions.push({\n            \"date\": date_from,\n            \"conclusion\": {\n                \"message1\": message1,\n                \"message2\": message2,\n                \"message3\": message3\n            }\n        })\n    }\n}\n\nmsg.conclusions = conclusions;\nmsg.payload = conclusions;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 1280,
+        "wires": [
+            [
+                "905bb92e5273f948"
+            ]
+        ]
+    },
+    {
+        "id": "4543b42525e7783c",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Date Formatting",
+        "func": "var timestamp = msg.payload;  // Given timestamp in milliseconds\n\n// Convert milliseconds to seconds\nvar seconds = Math.floor(timestamp / 1000);\n\n// Create a new Date object from the seconds\nvar date = new Date(seconds * 1000);\n\ndate.setDate(date.getDate() + 2);\n\n// Extract the date in the desired format\nmsg.today = date.toISOString().split('T')[0];\n\ndate.setDate(date.getDate() - 1);\n\nmsg.yesterday = date.toISOString().split('T')[0];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 940,
+        "y": 1060,
+        "wires": [
+            [
+                "7911cddaa1a36588"
+            ]
+        ]
+    },
+    {
+        "id": "7911cddaa1a36588",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "URL Building",
+        "func": "var date_from = msg.yesterday;\nvar date_to = msg.today;\n\n// Construct the URL with the date parameters\nvar url = \"https://data.gov.gr/api/v1/query/oasa_ridership?date_from=\" + date_from + \"&date_to=\" + date_to;\n\nmsg.url = url;\nglobal.set(\"date_from\", date_from);\nglobal.set(\"date_to\", date_to);\n\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1130,
+        "y": 1060,
+        "wires": [
+            [
+                "1bb79d2716fbedef"
+            ]
+        ]
+    },
+    {
+        "id": "1bb79d2716fbedef",
+        "type": "http request",
+        "z": "3bcdaec0cecda0ca",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "Authorization",
+                "keyValue": "",
+                "valueType": "other",
+                "valueValue": "Token 877396539fb01c71b5e67b591aab469f28adf5ab"
+            }
+        ],
+        "x": 1310,
+        "y": 1060,
+        "wires": [
+            [
+                "87af5dfc2ca1ceea"
+            ]
+        ]
+    },
+    {
+        "id": "12fc30edd12c2f9f",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Create midcentroid chart payload",
+        "func": "var dataset = global.get(\"clusterdb\");\n\nvar labels = [];\n\nif (msg.payload.length == 0) {\n    for (var object of dataset) {\n        if (!labels.includes(object.station)) {\n            labels.push(object.station);\n        }\n    }\n} else {\n    for (var i = 0; i < msg.payload.length; i++) {\n        labels.push(msg.payload[i]);\n    }\n}\n\n\nvar data = new Array();\nvar data2 = new Array();\nvar data3 = new Array();\n\nfor (var i = 0; i < labels.length; i++) {\n    data.push(new Array(7).fill(0));\n    data2.push(new Array(7).fill(0));\n    data3.push(new Array(7).fill(0));\n}\n\nvar days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\n\nfor (var stationName of labels) {\n    for (var aday of days) {\n        for (var z = 0; z < dataset.length; z++) {\n            if (dataset[z].day == aday && dataset[z].station == stationName) {\n                data[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].highcentroid });\n                data2[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].lowcentroid });\n                data3[labels.indexOf(stationName)][days.indexOf(aday)] = ({ \"x\": days.indexOf(dataset[z].day), \"y\": dataset[z].middlecentroid });\n            }\n        }\n    }\n}\n\nglobal.set(\"HighData\", data)\nglobal.set(\"LowData\", data2)\n\nmsg.payload = [{\n    \"series\": labels,\n    \"data\": data3,\n    \"labels\": labels\n}]\n\nglobal.set(\"middleCentroidChart\", msg.payload);\n\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 940,
+        "y": 800,
+        "wires": [
+            [
+                "f05a14c5c832083d"
+            ]
+        ]
+    },
+    {
+        "id": "491a8e6cebe83fe3",
+        "type": "debug",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Authorization message",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 640,
+        "y": 1120,
+        "wires": []
+    },
+    {
+        "id": "c235cd9938c4ac41",
+        "type": "switch",
+        "z": "3bcdaec0cecda0ca",
+        "name": "check if user auth",
+        "property": "auth_result",
+        "propertyType": "global",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "1",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 410,
+        "y": 1060,
+        "wires": [
+            [
+                "23ef0ae1622b5520"
+            ],
+            [
+                "572b42cc1cd97b74"
+            ]
+        ]
+    },
+    {
+        "id": "572b42cc1cd97b74",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "create message",
+        "func": "msg.payload = \"You are not authorized to select a date\";\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 1120,
+        "wires": [
+            [
+                "491a8e6cebe83fe3",
+                "dc3c0decd42a3614"
+            ]
+        ]
+    },
+    {
+        "id": "871f57c1f38d3b09",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 12",
+        "mode": "link",
+        "links": [
+            "3db93e362dc11958"
+        ],
+        "x": 1675,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "5e29602adb8effb8",
+        "type": "link in",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link in 6",
+        "links": [
+            "4d7d86bd2a2bd0bc"
+        ],
+        "x": 265,
+        "y": 800,
+        "wires": [
+            [
+                "16b589698bc709b0"
+            ]
+        ]
+    },
+    {
+        "id": "27c42332bab7c0e4",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 15",
+        "mode": "link",
+        "links": [
+            "14abea4c8a099ae3"
+        ],
+        "x": 875,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "2e9b9ea294f99471",
+        "type": "link in",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link in 8",
+        "links": [
+            "1b98df7e0f09fc3e"
+        ],
+        "x": 635,
+        "y": 480,
+        "wires": [
+            [
+                "55ad1b8e9bb528d0"
+            ]
+        ]
+    },
+    {
+        "id": "909dc22c5e776c7b",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 17",
+        "mode": "link",
+        "links": [
+            "f4c36580bef4e4e0"
+        ],
+        "x": 955,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "ed9009ec1180f281",
+        "type": "link in",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link in 10",
+        "links": [
+            "c6e6b4d3ee50f4a1"
+        ],
+        "x": 635,
+        "y": 520,
+        "wires": [
+            [
+                "affe731dedf19d89"
+            ]
+        ]
+    },
+    {
+        "id": "7bc9a8563c82bd8c",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 22",
+        "mode": "link",
+        "links": [
+            "9566d7527030b479"
+        ],
+        "x": 1415,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "f05a14c5c832083d",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 23",
+        "mode": "link",
+        "links": [
+            "54d954f2f692407d"
+        ],
+        "x": 1415,
+        "y": 800,
+        "wires": []
+    },
+    {
+        "id": "e4c689ee8ffac9b7",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 24",
+        "mode": "link",
+        "links": [
+            "127824f92177afdb"
+        ],
+        "x": 1415,
+        "y": 880,
+        "wires": []
+    },
+    {
+        "id": "53fbe99582b371b2",
+        "type": "link in",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link in 17",
+        "links": [
+            "09334ed04a9ac940"
+        ],
+        "x": 1125,
+        "y": 760,
+        "wires": [
+            [
+                "d07ed287efcb65a9"
+            ]
+        ]
+    },
+    {
+        "id": "dad9f2b1e558590d",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 26",
+        "mode": "link",
+        "links": [
+            "7995a09ec919a9ed"
+        ],
+        "x": 515,
+        "y": 800,
+        "wires": []
+    },
+    {
+        "id": "f6de8fa4616cd7db",
+        "type": "link in",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link in 19",
+        "links": [
+            "6d5c612862f6407a"
+        ],
+        "x": 705,
+        "y": 800,
+        "wires": [
+            [
+                "c2e29273b8b46607",
+                "12fc30edd12c2f9f",
+                "404b087f50765817"
+            ]
+        ]
+    },
+    {
+        "id": "f2dbb7276ef08a01",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Select stations dropdown",
+        "info": "",
+        "x": 610,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "a68fde9050179782",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 28",
+        "mode": "link",
+        "links": [
+            "f995bab9e900c5b9"
+        ],
+        "x": 515,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "2e346f0a4901e35b",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 29",
+        "mode": "link",
+        "links": [
+            "4cddf2b0defd3065",
+            "db81b107668df494"
+        ],
+        "x": 595,
+        "y": 1200,
+        "wires": []
+    },
+    {
+        "id": "a5ccb5f11a8d27aa",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 30",
+        "mode": "link",
+        "links": [
+            "bf7b12d99a9c0e3b"
+        ],
+        "x": 1415,
+        "y": 1180,
+        "wires": []
+    },
+    {
+        "id": "2f87850362985165",
+        "type": "link in",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link in 24",
+        "links": [
+            "d2439d5bdd191022"
+        ],
+        "x": 265,
+        "y": 1200,
+        "wires": [
+            [
+                "787d4875b3a757ad"
+            ]
+        ]
+    },
+    {
+        "id": "905bb92e5273f948",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 32",
+        "mode": "link",
+        "links": [
+            "7b3b79e1e2518883"
+        ],
+        "x": 575,
+        "y": 1280,
+        "wires": []
+    },
+    {
+        "id": "b9eaa01f19cfa171",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Conclusion Gauges",
+        "info": "",
+        "x": 710,
+        "y": 1200,
+        "wires": []
+    },
+    {
+        "id": "f955e5a4b016139b",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Message to conclusionsexchange",
+        "info": "",
+        "x": 730,
+        "y": 1280,
+        "wires": []
+    },
+    {
+        "id": "7bd187272bf0a7d3",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "DROP",
+        "info": "",
+        "x": 950,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "74987f0bbd68d7a0",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "INSERT",
+        "info": "",
+        "x": 1760,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "007233adbddecc7e",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "CREATE",
+        "info": "",
+        "x": 1040,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "71b8f18b3560abdd",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Centroid Charts",
+        "info": "",
+        "x": 1520,
+        "y": 800,
+        "wires": []
+    },
+    {
+        "id": "f1e306fc946f7bd9",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "STEP 2: DB-TABLE CREATION AND INSERTS FOR CLUSTERS - ONE TIME ONLY",
+        "info": "",
+        "x": 410,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "d91199bf47f5a691",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "STEP 3: SELECT DATA TO BE SHOWN IN CHARTS",
+        "info": "",
+        "x": 350,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "7c4da5a2791fa933",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "STEP 4: USER LOGIN, DATE PICK, SHOW CONCLUSIONS",
+        "info": "",
+        "x": 300,
+        "y": 980,
+        "wires": []
+    },
+    {
+        "id": "14f33ba9b744ec02",
+        "type": "link in",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link in 27",
+        "links": [
+            "693c4a3e0749f221",
+            "220c54b11417e7c8"
+        ],
+        "x": 105,
+        "y": 1060,
+        "wires": [
+            [
+                "1133115a61c78f4a"
+            ]
+        ]
+    },
+    {
+        "id": "579ff1279f6c0cda",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "load date",
+        "func": "msg.payload = msg.newdate;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 760,
+        "y": 1060,
+        "wires": [
+            [
+                "4543b42525e7783c"
+            ]
+        ]
+    },
+    {
+        "id": "23ef0ae1622b5520",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Tab name",
+        "func": "msg.payload = 'Conclusions';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 1060,
+        "wires": [
+            [
+                "579ff1279f6c0cda",
+                "2da5bda8c2f1308c"
+            ]
+        ]
+    },
+    {
+        "id": "1133115a61c78f4a",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "store date",
+        "func": "msg.newdate = msg.payload;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 220,
+        "y": 1060,
+        "wires": [
+            [
+                "c235cd9938c4ac41"
+            ]
+        ]
+    },
+    {
+        "id": "2da5bda8c2f1308c",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 35",
+        "mode": "link",
+        "links": [
+            "e97494ab4fa13374"
+        ],
+        "x": 645,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "c9c1d5b21ad76883",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Change to Conclusions Tab",
+        "info": "",
+        "x": 790,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "8dfb3fd939c0bad0",
+        "type": "inject",
+        "z": "3bcdaec0cecda0ca",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 200,
+        "wires": [
+            [
+                "17773349c7563870"
+            ]
+        ]
+    },
+    {
+        "id": "8f4ea894d20a8651",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "User table",
+        "info": "",
+        "x": 220,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "17773349c7563870",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "DROP TABLE users",
+        "func": "msg.topic = 'DROP TABLE IF EXISTS users';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 200,
+        "wires": [
+            [
+                "01872e5ba6de4207"
+            ]
+        ]
+    },
+    {
+        "id": "4df7d4717ae06b49",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "CREATE TABLE users",
+        "func": "msg.topic = 'CREATE TABLE users (userid INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT)';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 520,
+        "y": 240,
+        "wires": [
+            [
+                "dc822de2f2f09825"
+            ]
+        ]
+    },
+    {
+        "id": "01872e5ba6de4207",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 38",
+        "mode": "link",
+        "links": [
+            "5fec687e9610fc3f"
+        ],
+        "x": 615,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "7fdcdaf425f21f38",
+        "type": "link in",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link in 31",
+        "links": [
+            "5d209a5f19081b3b"
+        ],
+        "x": 375,
+        "y": 240,
+        "wires": [
+            [
+                "4df7d4717ae06b49"
+            ]
+        ]
+    },
+    {
+        "id": "dc822de2f2f09825",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 39",
+        "mode": "link",
+        "links": [
+            "f048546ede2240db"
+        ],
+        "x": 695,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "2002d2d0b2649212",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "DROP",
+        "info": "",
+        "x": 690,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "2a9a406d1d2a22ba",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "CREATE",
+        "info": "",
+        "x": 780,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "2577c03659942e32",
+        "type": "comment",
+        "z": "3bcdaec0cecda0ca",
+        "name": "STEP 1: DB-TABLE CREATION FOR USERS - ONE TIME ONLY",
+        "info": "",
+        "x": 390,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "c42892a879c3bbb8",
+        "type": "function",
+        "z": "3bcdaec0cecda0ca",
+        "name": "Date formatting for last 3 months",
+        "func": "var timestamp = msg.payload;  // Given timestamp in milliseconds\n\n// Convert milliseconds to seconds\nvar seconds = Math.floor(timestamp / 1000);\n\n// Create a new Date object from the seconds\nvar date = new Date(seconds * 1000);\n\ndate.setDate(date.getDate() - 2);\n\n// Extract the date in the desired format\nmsg.date_to = date.toISOString().split('T')[0];\n\ndate.setDate(date.getDate() - 90);\n\nmsg.date_from = date.toISOString().split('T')[0];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 440,
+        "wires": [
+            [
+                "e15108a1c121d302",
+                "98b757a8cfaf7e84"
+            ]
+        ]
+    },
+    {
+        "id": "98b757a8cfaf7e84",
+        "type": "debug",
+        "z": "3bcdaec0cecda0ca",
+        "name": "debug 6",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 680,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "8615c8279d2fb56d",
+        "type": "debug",
+        "z": "3bcdaec0cecda0ca",
+        "name": "debug 7",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1180,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "de6d0f787435a6fd",
+        "type": "debug",
+        "z": "3bcdaec0cecda0ca",
+        "name": "debug 8",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1420,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "dc3c0decd42a3614",
+        "type": "link out",
+        "z": "3bcdaec0cecda0ca",
+        "name": "link out 44",
+        "mode": "link",
+        "links": [
+            "64ea77cd894e5e57"
+        ],
+        "x": 555,
+        "y": 1160,
+        "wires": []
+    },
+    {
+        "id": "9d8ece1aad970ea8",
+        "type": "tab",
+        "label": "User Management",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "d20c2b5d4fd740ec",
+        "type": "http request",
+        "z": "9d8ece1aad970ea8",
+        "name": "Put a new user",
+        "method": "PUT",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "basic",
+        "senderr": false,
+        "headers": [],
+        "x": 700,
+        "y": 200,
+        "wires": [
+            [
+                "934649d735e4bb17"
+            ]
+        ]
+    },
+    {
+        "id": "2dd0570723f72c96",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "URL & body for user reg",
+        "func": "var username = msg.payload.username;\nvar password = msg.payload.password;\nvar exchange = msg.payload.exchange;\n\nmsg.url = \"http://localhost:15672/api/users/\" + username;\n\nmsg.username = username;\nmsg.password = password;\nmsg.exchange = exchange;\nmsg.payload = { \"password\": password, \"tags\": \"monitoring\" };\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 200,
+        "wires": [
+            [
+                "d20c2b5d4fd740ec",
+                "3b320c3186d7ee55"
+            ]
+        ]
+    },
+    {
+        "id": "f16437cc4b8eff9c",
+        "type": "http request",
+        "z": "9d8ece1aad970ea8",
+        "name": "Put a topic permission",
+        "method": "PUT",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "basic",
+        "senderr": false,
+        "headers": [],
+        "x": 820,
+        "y": 360,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f1d2b39999553abd",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "URL & body for giving topic permissions ",
+        "func": "var username = msg.username;\n// var password = msg.payload.password;\nvar vhost = 'oasa';\nvar body;\n\nmsg.url = \"http://localhost:15672/api/topic-permissions/\" + vhost + \"/\" + username;\n\nif (msg.exchange == true) {\n    body = { \"exchange\": \"conclusionsexchange\", \"write\": \".*\", \"read\": \".*\" };\n} else {\n    body = { \"exchange\": \"defaultexchange\", \"write\": \".*\", \"read\": \".*\" };\n}\nmsg.payload = body;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 520,
+        "y": 360,
+        "wires": [
+            [
+                "f16437cc4b8eff9c",
+                "c9d39ce155b8228f"
+            ]
+        ]
+    },
+    {
+        "id": "71961d73a8d2efa9",
+        "type": "comment",
+        "z": "9d8ece1aad970ea8",
+        "name": "Registers a user with Monitoring perms",
+        "info": "",
+        "x": 170,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "6111c4f8af0338e8",
+        "type": "comment",
+        "z": "9d8ece1aad970ea8",
+        "name": "Gives topic permissions to a user",
+        "info": "",
+        "x": 190,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "6209c0f060445b2e",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "URL for user list",
+        "func": "msg.username = msg.payload.username;\nmsg.password = msg.payload.password;\n\nmsg.url = \"http://localhost:15672/api/users/\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 260,
+        "y": 480,
+        "wires": [
+            [
+                "ec654c4b384643b4"
+            ]
+        ]
+    },
+    {
+        "id": "ec654c4b384643b4",
+        "type": "http request",
+        "z": "9d8ece1aad970ea8",
+        "name": "Get user list",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "basic",
+        "senderr": false,
+        "headers": [],
+        "x": 450,
+        "y": 480,
+        "wires": [
+            [
+                "e994c3aa3f230ca1"
+            ]
+        ]
+    },
+    {
+        "id": "e994c3aa3f230ca1",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "Checks if username exists in user list",
+        "func": "var user_list = msg.payload;\nvar username = msg.username;\nvar password = msg.password;\nvar message = \"User \" + username + \" doesn't exist!\";\nvar result = 0;\n\nfor (var i = 0; i < user_list.length; i++) {\n    if (username == user_list[i].name) {\n        message = \"Welcome \" + username;\n        result = 1;\n    }\n}\nmsg.payload = message;\nmsg.result = result;\nglobal.set(\"auth_result\", result)\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 480,
+        "wires": [
+            [
+                "93c2c7891c638921"
+            ]
+        ]
+    },
+    {
+        "id": "5de19bd1fd55673e",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "URL for user's topic permissions",
+        "func": "msg.url = \"http://localhost:15672/api/users/\" + msg.username + \"/topic-permissions\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1430,
+        "y": 520,
+        "wires": [
+            [
+                "97d65bba1a2d0555"
+            ]
+        ]
+    },
+    {
+        "id": "93c2c7891c638921",
+        "type": "switch",
+        "z": "9d8ece1aad970ea8",
+        "name": "If user exists -> Check topic permissions, else: Show message",
+        "property": "result",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "1",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 630,
+        "y": 540,
+        "wires": [
+            [
+                "6db9c548a66a9aa2"
+            ],
+            [
+                "b7818e07f87074b6",
+                "56243fe876b68b80"
+            ]
+        ]
+    },
+    {
+        "id": "b7818e07f87074b6",
+        "type": "debug",
+        "z": "9d8ece1aad970ea8",
+        "name": "Message for non-exist user",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1720,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "97d65bba1a2d0555",
+        "type": "http request",
+        "z": "9d8ece1aad970ea8",
+        "name": "Get user's topic permissions",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "basic",
+        "senderr": false,
+        "headers": [],
+        "x": 1720,
+        "y": 520,
+        "wires": [
+            [
+                "eff43ba089592d27"
+            ]
+        ]
+    },
+    {
+        "id": "eff43ba089592d27",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "Checks if user has a topic permission",
+        "func": "var exchange_list = msg.payload;\nvar exchange = 'conclusionsexchange';\nvar result = 0;\n\nfor (var i = 0; i < exchange_list.length; i++) {\n    if (exchange_list[i].user == msg.username) {\n        if (exchange_list[i].exchange == exchange) {\n            result = 1;\n        }\n    }\n}\nmsg.result = result;\nglobal.set(\"auth_result\", result);\nmsg.payload = 'Welcome ' + msg.username + \"!\";\nmsg.message = \"User \" + msg.username + \" doesn't have the correct topic permissions\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1410,
+        "y": 460,
+        "wires": [
+            [
+                "75cc6466afb85ae6"
+            ]
+        ]
+    },
+    {
+        "id": "75cc6466afb85ae6",
+        "type": "switch",
+        "z": "9d8ece1aad970ea8",
+        "name": "If he has -> choose date for results, else: Nothing",
+        "property": "result",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "1",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1790,
+        "y": 460,
+        "wires": [
+            [
+                "af38f379c218a1d1",
+                "7635766d77764248",
+                "56243139933805a7"
+            ],
+            [
+                "2305dd75f7d9711e",
+                "ea26cf422396af7e"
+            ]
+        ]
+    },
+    {
+        "id": "2305dd75f7d9711e",
+        "type": "debug",
+        "z": "9d8ece1aad970ea8",
+        "name": "Message for user without permissions",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "message",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1750,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "af38f379c218a1d1",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "Setting default time",
+        "func": "msg.payload = '06/01/2023';\nmsg.defaulttime = '01/06/2023';\n\nglobal.set(\"loggedinuser\", msg.username);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1470,
+        "y": 400,
+        "wires": [
+            [
+                "76fb1e9fe23b6536"
+            ]
+        ]
+    },
+    {
+        "id": "acc96e7bd98e79f3",
+        "type": "comment",
+        "z": "9d8ece1aad970ea8",
+        "name": "User logs in and gets results if he exists",
+        "info": "",
+        "x": 170,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "8e69a174f2abf992",
+        "type": "comment",
+        "z": "9d8ece1aad970ea8",
+        "name": "Messages",
+        "info": "",
+        "x": 1720,
+        "y": 800,
+        "wires": []
+    },
+    {
+        "id": "d85a9893d40e8bd9",
+        "type": "link in",
+        "z": "9d8ece1aad970ea8",
+        "name": "link in 11",
+        "links": [
+            "4332c7bb1e73cf26"
+        ],
+        "x": 305,
+        "y": 200,
+        "wires": [
+            [
+                "2dd0570723f72c96"
+            ]
+        ]
+    },
+    {
+        "id": "163463e28a33429a",
+        "type": "link in",
+        "z": "9d8ece1aad970ea8",
+        "name": "link in 12",
+        "links": [
+            "567e8260d9506eea"
+        ],
+        "x": 125,
+        "y": 480,
+        "wires": [
+            [
+                "6209c0f060445b2e"
+            ]
+        ]
+    },
+    {
+        "id": "76fb1e9fe23b6536",
+        "type": "link out",
+        "z": "9d8ece1aad970ea8",
+        "name": "link out 21",
+        "mode": "link",
+        "links": [
+            "a5a936e3004cc0f9",
+            "ec3ae267c84020cf"
+        ],
+        "x": 1615,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "934649d735e4bb17",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "URL & body for giving permissions ",
+        "func": "var username = msg.username;\n// var password = msg.payload.password;\nvar vhost = 'oasa';\n\nmsg.url = \"http://localhost:15672/api/permissions/\" + vhost + \"/\" + username;\n\nmsg.payload = { \"configure\": \".*\", \"write\": \".*\", \"read\": \".*\" };\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 280,
+        "wires": [
+            [
+                "9e982ff6b1ebc1d0"
+            ]
+        ]
+    },
+    {
+        "id": "9e982ff6b1ebc1d0",
+        "type": "http request",
+        "z": "9d8ece1aad970ea8",
+        "name": "Put a permission",
+        "method": "PUT",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "basic",
+        "senderr": false,
+        "headers": [],
+        "x": 770,
+        "y": 280,
+        "wires": [
+            [
+                "f1d2b39999553abd"
+            ]
+        ]
+    },
+    {
+        "id": "5f93649e6b2ce809",
+        "type": "comment",
+        "z": "9d8ece1aad970ea8",
+        "name": "Gives permissions to a user",
+        "info": "",
+        "x": 200,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "f45e7e4e2c20606e",
+        "type": "comment",
+        "z": "9d8ece1aad970ea8",
+        "name": "User logs out",
+        "info": "",
+        "x": 430,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "e32ca9008d9d9a18",
+        "type": "link in",
+        "z": "9d8ece1aad970ea8",
+        "name": "link in 29",
+        "links": [
+            "8d56d90743592c65"
+        ],
+        "x": 485,
+        "y": 700,
+        "wires": [
+            [
+                "d94ff2cbd232d507"
+            ]
+        ]
+    },
+    {
+        "id": "d94ff2cbd232d507",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "user logs out",
+        "func": "if (msg.payload === \"I'm sure\") {\n    var result = 0;\n    global.set(\"auth_result\", result);\n    msg.payload = 'Forms';\n    msg.message = 'User logged out!'\n} else {\n    msg.message = \"User didn't log out!\";\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 610,
+        "y": 700,
+        "wires": [
+            [
+                "1ec52186046c715b"
+            ]
+        ]
+    },
+    {
+        "id": "1ec52186046c715b",
+        "type": "switch",
+        "z": "9d8ece1aad970ea8",
+        "name": "User logs out: switch to Forms Tab, else: nothing",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Forms",
+                "vt": "str"
+            },
+            {
+                "t": "neq",
+                "v": "Forms",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 900,
+        "y": 700,
+        "wires": [
+            [
+                "8d495472c7464088",
+                "64ef1e4c82a06a88",
+                "310566cab8e5e510"
+            ],
+            [
+                "3f97cffc43dcadf2"
+            ]
+        ]
+    },
+    {
+        "id": "3f97cffc43dcadf2",
+        "type": "debug",
+        "z": "9d8ece1aad970ea8",
+        "name": "Message for user not logging out",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "message",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 820,
+        "y": 740,
+        "wires": []
+    },
+    {
+        "id": "8d495472c7464088",
+        "type": "debug",
+        "z": "9d8ece1aad970ea8",
+        "name": "Message for user logging out",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "message",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 800,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "64ef1e4c82a06a88",
+        "type": "link out",
+        "z": "9d8ece1aad970ea8",
+        "name": "link out 36",
+        "mode": "link",
+        "links": [
+            "2cbfa7a2a22a215d"
+        ],
+        "x": 1135,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "0ddf8b647b08b77e",
+        "type": "link out",
+        "z": "9d8ece1aad970ea8",
+        "name": "link out 41",
+        "mode": "link",
+        "links": [
+            "9f62db6f97dcd488"
+        ],
+        "x": 635,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "3b320c3186d7ee55",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "INSERT INTO users",
+        "func": "var query = \"INSERT INTO users(username, password) VALUES ('\" + msg.username + \"', '\" + msg.password + \"')\";\n\nmsg.topic = query;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 140,
+        "wires": [
+            [
+                "0ddf8b647b08b77e"
+            ]
+        ]
+    },
+    {
+        "id": "6db9c548a66a9aa2",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "SELECT password",
+        "func": "var result = global.get(\"auth_result\");\n\nif (result == 1) {\n    msg.topic = \"SELECT password FROM users WHERE username='\" + msg.username + \"'\"\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1030,
+        "y": 480,
+        "wires": [
+            [
+                "e57ed72bf335fce4"
+            ]
+        ]
+    },
+    {
+        "id": "e57ed72bf335fce4",
+        "type": "link out",
+        "z": "9d8ece1aad970ea8",
+        "name": "link out 42",
+        "mode": "link",
+        "links": [
+            "a9c3a0ce9e67e588"
+        ],
+        "x": 1105,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "8f95d514e3026a09",
+        "type": "link in",
+        "z": "9d8ece1aad970ea8",
+        "name": "link in 36",
+        "links": [
+            "7a882970c5d92dcc"
+        ],
+        "x": 945,
+        "y": 540,
+        "wires": [
+            [
+                "d91b54536d9f6ebb"
+            ]
+        ]
+    },
+    {
+        "id": "d91b54536d9f6ebb",
+        "type": "switch",
+        "z": "9d8ece1aad970ea8",
+        "name": "Password exists in base -> ok",
+        "property": "payload[0].password",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "password",
+                "vt": "msg"
+            },
+            {
+                "t": "neq",
+                "v": "password",
+                "vt": "msg"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1130,
+        "y": 540,
+        "wires": [
+            [
+                "5de19bd1fd55673e"
+            ],
+            [
+                "399da3f9d52660c1"
+            ]
+        ]
+    },
+    {
+        "id": "1b919376b068f4e2",
+        "type": "debug",
+        "z": "9d8ece1aad970ea8",
+        "name": "Message for incorrect password",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1730,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "399da3f9d52660c1",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "Incorrect password",
+        "func": "msg.payload = 'User gave incorrect password!'\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1390,
+        "y": 560,
+        "wires": [
+            [
+                "1b919376b068f4e2",
+                "019393cf8cf20373"
+            ]
+        ]
+    },
+    {
+        "id": "7635766d77764248",
+        "type": "debug",
+        "z": "9d8ece1aad970ea8",
+        "name": "Message for welcoming the user",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "welcome",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1730,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "047633c4dfd2efd1",
+        "type": "comment",
+        "z": "9d8ece1aad970ea8",
+        "name": "INSERT",
+        "info": "",
+        "x": 720,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "019393cf8cf20373",
+        "type": "link out",
+        "z": "9d8ece1aad970ea8",
+        "name": "link out 45",
+        "mode": "link",
+        "links": [
+            "34ecfa1f3ff0551f"
+        ],
+        "x": 1535,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "56243fe876b68b80",
+        "type": "link out",
+        "z": "9d8ece1aad970ea8",
+        "name": "link out 46",
+        "mode": "link",
+        "links": [
+            "8e8aeac033c63526"
+        ],
+        "x": 845,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "56243139933805a7",
+        "type": "link out",
+        "z": "9d8ece1aad970ea8",
+        "name": "link out 47",
+        "mode": "link",
+        "links": [
+            "edd62f4d687a1995"
+        ],
+        "x": 1925,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "5c5965a9874f66b9",
+        "type": "link out",
+        "z": "9d8ece1aad970ea8",
+        "name": "link out 48",
+        "mode": "link",
+        "links": [
+            "490b36f34cb82f55"
+        ],
+        "x": 1895,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "ea26cf422396af7e",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "Not authorized",
+        "func": "msg.payload = \"You are not authorized for OASA topic!\";\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1760,
+        "y": 360,
+        "wires": [
+            [
+                "5c5965a9874f66b9"
+            ]
+        ]
+    },
+    {
+        "id": "28fd935f71e34c08",
+        "type": "link out",
+        "z": "9d8ece1aad970ea8",
+        "name": "link out 49",
+        "mode": "link",
+        "links": [
+            "3e41ea7c62a4a1a4"
+        ],
+        "x": 635,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "c9d39ce155b8228f",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "Registration successfult",
+        "func": "msg.payload = \"You subscribed to \" + msg.payload.exchange + \"!\";\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 420,
+        "wires": [
+            [
+                "28fd935f71e34c08"
+            ]
+        ]
+    },
+    {
+        "id": "96d4fdf26728980c",
+        "type": "link out",
+        "z": "9d8ece1aad970ea8",
+        "name": "link out 50",
+        "mode": "link",
+        "links": [
+            "6fb4d74951f0321d"
+        ],
+        "x": 1175,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "310566cab8e5e510",
+        "type": "function",
+        "z": "9d8ece1aad970ea8",
+        "name": "Logged out",
+        "func": "var loggedinuser = global.get(\"loggedinuser\");\n\nmsg.payload = \"User \" + loggedinuser + \" logged out!\";\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1050,
+        "y": 660,
+        "wires": [
+            [
+                "96d4fdf26728980c"
+            ]
+        ]
+    },
+    {
+        "id": "a9c34ec89946c262",
+        "type": "tab",
+        "label": "db-flow",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "5f932a5f6d8f7539",
+        "type": "sqlite",
+        "z": "a9c34ec89946c262",
+        "mydb": "0d9996693cf61614",
+        "sqlquery": "batch",
+        "sql": "",
+        "name": "Batch Insert in clusters of Station Info DB",
+        "x": 420,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "3db93e362dc11958",
+        "type": "link in",
+        "z": "a9c34ec89946c262",
+        "name": "link in 4",
+        "links": [
+            "871f57c1f38d3b09"
+        ],
+        "x": 205,
+        "y": 220,
+        "wires": [
+            [
+                "5f932a5f6d8f7539"
+            ]
+        ]
+    },
+    {
+        "id": "42020841e7631604",
+        "type": "sqlite",
+        "z": "a9c34ec89946c262",
+        "mydb": "0d9996693cf61614",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "DROP clusters of Station Info DB",
+        "x": 400,
+        "y": 100,
+        "wires": [
+            [
+                "1b98df7e0f09fc3e"
+            ]
+        ]
+    },
+    {
+        "id": "14abea4c8a099ae3",
+        "type": "link in",
+        "z": "a9c34ec89946c262",
+        "name": "link in 7",
+        "links": [
+            "27c42332bab7c0e4"
+        ],
+        "x": 205,
+        "y": 100,
+        "wires": [
+            [
+                "42020841e7631604"
+            ]
+        ]
+    },
+    {
+        "id": "1b98df7e0f09fc3e",
+        "type": "link out",
+        "z": "a9c34ec89946c262",
+        "name": "link out 16",
+        "mode": "link",
+        "links": [
+            "2e9b9ea294f99471"
+        ],
+        "x": 595,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "f4c36580bef4e4e0",
+        "type": "link in",
+        "z": "a9c34ec89946c262",
+        "name": "link in 9",
+        "links": [
+            "909dc22c5e776c7b"
+        ],
+        "x": 205,
+        "y": 160,
+        "wires": [
+            [
+                "5883baa158dc83bc"
+            ]
+        ]
+    },
+    {
+        "id": "5883baa158dc83bc",
+        "type": "sqlite",
+        "z": "a9c34ec89946c262",
+        "mydb": "0d9996693cf61614",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "CREATE clusters in Station Info DB",
+        "x": 400,
+        "y": 160,
+        "wires": [
+            [
+                "c6e6b4d3ee50f4a1"
+            ]
+        ]
+    },
+    {
+        "id": "c6e6b4d3ee50f4a1",
+        "type": "link out",
+        "z": "a9c34ec89946c262",
+        "name": "link out 18",
+        "mode": "link",
+        "links": [
+            "ed9009ec1180f281"
+        ],
+        "x": 595,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "eb1dd5fe30f28b79",
+        "type": "sqlite",
+        "z": "a9c34ec89946c262",
+        "mydb": "0d9996693cf61614",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "SELECT from clusters of Station Info DB",
+        "x": 420,
+        "y": 280,
+        "wires": [
+            [
+                "5edb3c6c42d0d80c"
+            ]
+        ]
+    },
+    {
+        "id": "5edb3c6c42d0d80c",
+        "type": "link out",
+        "z": "a9c34ec89946c262",
+        "name": "link out 14",
+        "mode": "link",
+        "links": [
+            "fbec9e3555bb022b"
+        ],
+        "x": 635,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "f995bab9e900c5b9",
+        "type": "link in",
+        "z": "a9c34ec89946c262",
+        "name": "link in 20",
+        "links": [
+            "a68fde9050179782"
+        ],
+        "x": 205,
+        "y": 280,
+        "wires": [
+            [
+                "eb1dd5fe30f28b79"
+            ]
+        ]
+    },
+    {
+        "id": "3c0cd1be8eedf1c1",
+        "type": "sqlite",
+        "z": "a9c34ec89946c262",
+        "mydb": "2d51fc0d473c9ffa",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "DROP users of User Info DB",
+        "x": 380,
+        "y": 340,
+        "wires": [
+            [
+                "5d209a5f19081b3b"
+            ]
+        ]
+    },
+    {
+        "id": "5fec687e9610fc3f",
+        "type": "link in",
+        "z": "a9c34ec89946c262",
+        "name": "link in 32",
+        "links": [
+            "01872e5ba6de4207"
+        ],
+        "x": 205,
+        "y": 340,
+        "wires": [
+            [
+                "3c0cd1be8eedf1c1"
+            ]
+        ]
+    },
+    {
+        "id": "5d209a5f19081b3b",
+        "type": "link out",
+        "z": "a9c34ec89946c262",
+        "name": "link out 40",
+        "mode": "link",
+        "links": [
+            "7fdcdaf425f21f38"
+        ],
+        "x": 555,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "aa5d544dd9e8a317",
+        "type": "sqlite",
+        "z": "a9c34ec89946c262",
+        "mydb": "2d51fc0d473c9ffa",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "CREATE users of User Info DB",
+        "x": 390,
+        "y": 400,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f048546ede2240db",
+        "type": "link in",
+        "z": "a9c34ec89946c262",
+        "name": "link in 33",
+        "links": [
+            "dc822de2f2f09825"
+        ],
+        "x": 205,
+        "y": 400,
+        "wires": [
+            [
+                "aa5d544dd9e8a317"
+            ]
+        ]
+    },
+    {
+        "id": "9f62db6f97dcd488",
+        "type": "link in",
+        "z": "a9c34ec89946c262",
+        "name": "link in 34",
+        "links": [
+            "0ddf8b647b08b77e"
+        ],
+        "x": 205,
+        "y": 460,
+        "wires": [
+            [
+                "b224f3dce67a48ec"
+            ]
+        ]
+    },
+    {
+        "id": "4c0e4e2905ca107e",
+        "type": "sqlite",
+        "z": "a9c34ec89946c262",
+        "mydb": "2d51fc0d473c9ffa",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "SELECT users of User Info DB",
+        "x": 390,
+        "y": 520,
+        "wires": [
+            [
+                "7a882970c5d92dcc"
+            ]
+        ]
+    },
+    {
+        "id": "a9c3a0ce9e67e588",
+        "type": "link in",
+        "z": "a9c34ec89946c262",
+        "name": "link in 35",
+        "links": [
+            "e57ed72bf335fce4"
+        ],
+        "x": 205,
+        "y": 520,
+        "wires": [
+            [
+                "4c0e4e2905ca107e"
+            ]
+        ]
+    },
+    {
+        "id": "7a882970c5d92dcc",
+        "type": "link out",
+        "z": "a9c34ec89946c262",
+        "name": "link out 43",
+        "mode": "link",
+        "links": [
+            "8f95d514e3026a09"
+        ],
+        "x": 575,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "b224f3dce67a48ec",
+        "type": "sqlite",
+        "z": "a9c34ec89946c262",
+        "mydb": "2d51fc0d473c9ffa",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "INSERT users of User Info DB",
+        "x": 390,
+        "y": 460,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "a318e7dea54be1c8",
+        "type": "tab",
+        "label": "rabbitmq-flows",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "4b052cf4f58a344f",
+        "type": "amqp-out",
+        "z": "a318e7dea54be1c8",
+        "name": "",
+        "broker": "698020603d8a2907",
+        "exchangeName": "oasaexchange",
+        "exchangeType": "direct",
+        "exchangeRoutingKey": "centroidchart",
+        "exchangeRoutingKeyType": "str",
+        "exchangeDurable": true,
+        "amqpProperties": "{ \"headers\": {} }",
+        "rpcTimeoutMilliseconds": 3000,
+        "outputs": 0,
+        "x": 540,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "fbec9e3555bb022b",
+        "type": "link in",
+        "z": "a318e7dea54be1c8",
+        "name": "link in 5",
+        "links": [
+            "5edb3c6c42d0d80c"
+        ],
+        "x": 225,
+        "y": 120,
+        "wires": [
+            [
+                "fc510abda53d9172"
+            ]
+        ]
+    },
+    {
+        "id": "20e78279512e0151",
+        "type": "amqp-in",
+        "z": "a318e7dea54be1c8",
+        "name": "",
+        "broker": "698020603d8a2907",
+        "prefetch": 0,
+        "noAck": true,
+        "exchangeName": "oasaexchange",
+        "exchangeType": "direct",
+        "exchangeRoutingKey": "centroidchart",
+        "exchangeDurable": true,
+        "queueName": "highcentroidqueue",
+        "queueExclusive": false,
+        "queueDurable": true,
+        "queueAutoDelete": false,
+        "headers": "{}",
+        "x": 540,
+        "y": 180,
+        "wires": [
+            [
+                "1345c9ad78c6b6c3"
+            ]
+        ]
+    },
+    {
+        "id": "4d7d86bd2a2bd0bc",
+        "type": "link out",
+        "z": "a318e7dea54be1c8",
+        "name": "link out 13",
+        "mode": "link",
+        "links": [
+            "5e29602adb8effb8"
+        ],
+        "x": 855,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "12a12f9efe48e5d6",
+        "type": "comment",
+        "z": "a318e7dea54be1c8",
+        "name": "db data selection",
+        "info": "",
+        "x": 160,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "613097a0b08d5522",
+        "type": "comment",
+        "z": "a318e7dea54be1c8",
+        "name": "data send to charts",
+        "info": "",
+        "x": 930,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "3be3c2054ea5cd15",
+        "type": "amqp-out",
+        "z": "a318e7dea54be1c8",
+        "name": "",
+        "broker": "698020603d8a2907",
+        "exchangeName": "clusterexchange",
+        "exchangeType": "direct",
+        "exchangeRoutingKey": "clusterkey",
+        "exchangeRoutingKeyType": "str",
+        "exchangeDurable": true,
+        "amqpProperties": "{ \"headers\": {} }",
+        "rpcTimeoutMilliseconds": 3000,
+        "outputs": 0,
+        "x": 540,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "bf7b12d99a9c0e3b",
+        "type": "link in",
+        "z": "a318e7dea54be1c8",
+        "name": "link in 23",
+        "links": [
+            "a5ccb5f11a8d27aa"
+        ],
+        "x": 225,
+        "y": 240,
+        "wires": [
+            [
+                "13d447cbda972db1"
+            ]
+        ]
+    },
+    {
+        "id": "773ba0b98f535ede",
+        "type": "amqp-in",
+        "z": "a318e7dea54be1c8",
+        "name": "",
+        "broker": "698020603d8a2907",
+        "prefetch": 0,
+        "noAck": true,
+        "exchangeName": "clusterexchange",
+        "exchangeType": "direct",
+        "exchangeRoutingKey": "clusterkey",
+        "exchangeDurable": true,
+        "queueName": "newclusterqueue",
+        "queueExclusive": false,
+        "queueDurable": true,
+        "queueAutoDelete": false,
+        "headers": "{}",
+        "x": 540,
+        "y": 300,
+        "wires": [
+            [
+                "2afe40819b018747"
+            ]
+        ]
+    },
+    {
+        "id": "d2439d5bdd191022",
+        "type": "link out",
+        "z": "a318e7dea54be1c8",
+        "name": "link out 31",
+        "mode": "link",
+        "links": [
+            "2f87850362985165"
+        ],
+        "x": 855,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "04c128b8413052a6",
+        "type": "amqp-out",
+        "z": "a318e7dea54be1c8",
+        "name": "",
+        "broker": "698020603d8a2907",
+        "exchangeName": "conclusionsexchange",
+        "exchangeType": "direct",
+        "exchangeRoutingKey": "conclusionskey",
+        "exchangeRoutingKeyType": "str",
+        "exchangeDurable": true,
+        "amqpProperties": "{ \"headers\": {} }",
+        "rpcTimeoutMilliseconds": 3000,
+        "outputs": 0,
+        "x": 570,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "7b3b79e1e2518883",
+        "type": "link in",
+        "z": "a318e7dea54be1c8",
+        "name": "link in 25",
+        "links": [
+            "905bb92e5273f948"
+        ],
+        "x": 225,
+        "y": 360,
+        "wires": [
+            [
+                "003facb17752dd6d"
+            ]
+        ]
+    },
+    {
+        "id": "0de4cb31a39b8934",
+        "type": "amqp-in",
+        "z": "a318e7dea54be1c8",
+        "name": "",
+        "broker": "698020603d8a2907",
+        "prefetch": 0,
+        "noAck": true,
+        "exchangeName": "conclusionsexchange",
+        "exchangeType": "direct",
+        "exchangeRoutingKey": "conclusionskey",
+        "exchangeDurable": true,
+        "queueName": "conclusionsqueue",
+        "queueExclusive": false,
+        "queueDurable": true,
+        "queueAutoDelete": false,
+        "headers": "{}",
+        "x": 570,
+        "y": 420,
+        "wires": [
+            [
+                "7ff153148a72cef0"
+            ]
+        ]
+    },
+    {
+        "id": "b8d762699fb9ef1b",
+        "type": "link out",
+        "z": "a318e7dea54be1c8",
+        "name": "link out 33",
+        "mode": "link",
+        "links": [
+            "11b24b027d7739d1"
+        ],
+        "x": 915,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "fc510abda53d9172",
+        "type": "json",
+        "z": "a318e7dea54be1c8",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 330,
+        "y": 120,
+        "wires": [
+            [
+                "4b052cf4f58a344f"
+            ]
+        ]
+    },
+    {
+        "id": "13d447cbda972db1",
+        "type": "json",
+        "z": "a318e7dea54be1c8",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 330,
+        "y": 240,
+        "wires": [
+            [
+                "3be3c2054ea5cd15"
+            ]
+        ]
+    },
+    {
+        "id": "2afe40819b018747",
+        "type": "json",
+        "z": "a318e7dea54be1c8",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 750,
+        "y": 300,
+        "wires": [
+            [
+                "d2439d5bdd191022"
+            ]
+        ]
+    },
+    {
+        "id": "003facb17752dd6d",
+        "type": "json",
+        "z": "a318e7dea54be1c8",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 330,
+        "y": 360,
+        "wires": [
+            [
+                "04c128b8413052a6"
+            ]
+        ]
+    },
+    {
+        "id": "7ff153148a72cef0",
+        "type": "json",
+        "z": "a318e7dea54be1c8",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 810,
+        "y": 420,
+        "wires": [
+            [
+                "b8d762699fb9ef1b"
+            ]
+        ]
+    },
+    {
+        "id": "3d938f0c20769d17",
+        "type": "comment",
+        "z": "a318e7dea54be1c8",
+        "name": "last day centroids",
+        "info": "",
+        "x": 160,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "06e895d592e0cf24",
+        "type": "comment",
+        "z": "a318e7dea54be1c8",
+        "name": "centroids send to create gauges and conclusions",
+        "info": "",
+        "x": 1020,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "392198804d1e12b8",
+        "type": "comment",
+        "z": "a318e7dea54be1c8",
+        "name": "conclusion message",
+        "info": "",
+        "x": 150,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "61c1079c2f8602d4",
+        "type": "comment",
+        "z": "a318e7dea54be1c8",
+        "name": "conclusion message send to consumers",
+        "info": "",
+        "x": 1050,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "1345c9ad78c6b6c3",
+        "type": "json",
+        "z": "a318e7dea54be1c8",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 750,
+        "y": 180,
+        "wires": [
+            [
+                "4d7d86bd2a2bd0bc"
+            ]
+        ]
+    },
+    {
+        "id": "ceca31730921b073",
+        "type": "tab",
+        "label": "Dashboard",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "9a020e2357e9b198",
+        "type": "ui_form",
+        "z": "ceca31730921b073",
+        "name": "Register user",
+        "label": "",
+        "group": "8a571044f783cc36",
+        "order": 1,
+        "width": 10,
+        "height": 1,
+        "options": [
+            {
+                "label": "Username",
+                "value": "username",
+                "type": "text",
+                "required": true,
+                "rows": null
+            },
+            {
+                "label": "Password",
+                "value": "password",
+                "type": "text",
+                "required": true,
+                "rows": null
+            },
+            {
+                "label": "OASA news",
+                "value": "exchange",
+                "type": "switch",
+                "required": false,
+                "rows": null
+            }
+        ],
+        "formValue": {
+            "username": "",
+            "password": "",
+            "exchange": false
+        },
+        "payload": "",
+        "submit": "submit",
+        "cancel": "cancel",
+        "topic": "topic",
+        "topicType": "msg",
+        "splitLayout": false,
+        "className": "",
+        "x": 410,
+        "y": 140,
+        "wires": [
+            [
+                "4332c7bb1e73cf26"
+            ]
+        ]
+    },
+    {
+        "id": "4332c7bb1e73cf26",
+        "type": "link out",
+        "z": "ceca31730921b073",
+        "name": "link out 19",
+        "mode": "link",
+        "links": [
+            "d85a9893d40e8bd9"
+        ],
+        "x": 535,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "fb21aa2504fe5ad3",
+        "type": "ui_form",
+        "z": "ceca31730921b073",
+        "name": "Login user",
+        "label": "",
+        "group": "be557a4668e9cbf4",
+        "order": 1,
+        "width": 10,
+        "height": 1,
+        "options": [
+            {
+                "label": "Username",
+                "value": "username",
+                "type": "text",
+                "required": true,
+                "rows": null
+            },
+            {
+                "label": "Password",
+                "value": "password",
+                "type": "text",
+                "required": true,
+                "rows": null
+            }
+        ],
+        "formValue": {
+            "username": "",
+            "password": ""
+        },
+        "payload": "",
+        "submit": "submit",
+        "cancel": "cancel",
+        "topic": "topic",
+        "topicType": "msg",
+        "splitLayout": "",
+        "className": "",
+        "x": 410,
+        "y": 260,
+        "wires": [
+            [
+                "567e8260d9506eea"
+            ]
+        ]
+    },
+    {
+        "id": "567e8260d9506eea",
+        "type": "link out",
+        "z": "ceca31730921b073",
+        "name": "link out 20",
+        "mode": "link",
+        "links": [
+            "163463e28a33429a"
+        ],
+        "x": 535,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "01a6d7661ffa9ec1",
+        "type": "ui_template",
+        "z": "ceca31730921b073",
+        "group": "dc634c40a0a45129",
+        "name": "Choose date",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "format": "<p>Please choose a date: (default: {{msg.defaulttime}})</p>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 410,
+        "y": 700,
+        "wires": [
+            [
+                "335c76df81f50606"
+            ]
+        ]
+    },
+    {
+        "id": "ec3ae267c84020cf",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 13",
+        "links": [
+            "76fb1e9fe23b6536"
+        ],
+        "x": 285,
+        "y": 700,
+        "wires": [
+            [
+                "01a6d7661ffa9ec1"
+            ]
+        ]
+    },
+    {
+        "id": "a428be6c04935da2",
+        "type": "ui_chart",
+        "z": "ceca31730921b073",
+        "name": "",
+        "group": "e09760222c355a5a",
+        "order": 2,
+        "width": 17,
+        "height": 7,
+        "label": "Station HighCentroids/Day Chart",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "x",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": true,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "4",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "604800",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#1dfa00",
+            "#ff7f0e",
+            "#207e20",
+            "#fb09db",
+            "#f01414",
+            "#ffb4b3",
+            "#9467bd",
+            "#d9fa00"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1050,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "3800fb2089b09dd3",
+        "type": "ui_chart",
+        "z": "ceca31730921b073",
+        "name": "",
+        "group": "e09760222c355a5a",
+        "order": 4,
+        "width": 17,
+        "height": 7,
+        "label": "Station LowCentroids/Day Chart",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "x",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": true,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "4",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "604800",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#1dfa00",
+            "#ff7f0e",
+            "#207e20",
+            "#fb09db",
+            "#f01414",
+            "#ffb4b3",
+            "#9467bd",
+            "#d9fa00"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1050,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "8209943f6a1edbfc",
+        "type": "ui_chart",
+        "z": "ceca31730921b073",
+        "name": "",
+        "group": "e09760222c355a5a",
+        "order": 3,
+        "width": 17,
+        "height": 7,
+        "label": "Station MidCentroids/Day Chart",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "x",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": true,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "4",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "604800",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#1dfa00",
+            "#ff7f0e",
+            "#207e20",
+            "#fb09db",
+            "#f01414",
+            "#ffb4b3",
+            "#9467bd",
+            "#d9fa00"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1050,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "9566d7527030b479",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 14",
+        "links": [
+            "7bc9a8563c82bd8c"
+        ],
+        "x": 865,
+        "y": 140,
+        "wires": [
+            [
+                "a428be6c04935da2"
+            ]
+        ]
+    },
+    {
+        "id": "54d954f2f692407d",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 15",
+        "links": [
+            "f05a14c5c832083d"
+        ],
+        "x": 865,
+        "y": 200,
+        "wires": [
+            [
+                "8209943f6a1edbfc"
+            ]
+        ]
+    },
+    {
+        "id": "127824f92177afdb",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 16",
+        "links": [
+            "e4c689ee8ffac9b7"
+        ],
+        "x": 865,
+        "y": 260,
+        "wires": [
+            [
+                "3800fb2089b09dd3"
+            ]
+        ]
+    },
+    {
+        "id": "e302d527da75f636",
+        "type": "ui_button",
+        "z": "ceca31730921b073",
+        "name": "Clear Charts",
+        "group": "e09760222c355a5a",
+        "order": 5,
+        "width": 17,
+        "height": 1,
+        "passthru": false,
+        "label": "Clear Charts",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 990,
+        "y": 320,
+        "wires": [
+            [
+                "09334ed04a9ac940"
+            ]
+        ]
+    },
+    {
+        "id": "09334ed04a9ac940",
+        "type": "link out",
+        "z": "ceca31730921b073",
+        "name": "link out 25",
+        "mode": "link",
+        "links": [
+            "53fbe99582b371b2"
+        ],
+        "x": 1115,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "c268df8c955aa9d7",
+        "type": "ui_dropdown",
+        "z": "ceca31730921b073",
+        "name": "Select stations",
+        "label": "",
+        "tooltip": "",
+        "place": "All stations shown",
+        "group": "e09760222c355a5a",
+        "order": 1,
+        "width": 17,
+        "height": 1,
+        "passthru": true,
+        "multiple": true,
+        "options": [],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 1000,
+        "y": 380,
+        "wires": [
+            [
+                "6d5c612862f6407a"
+            ]
+        ]
+    },
+    {
+        "id": "7995a09ec919a9ed",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 18",
+        "links": [
+            "dad9f2b1e558590d"
+        ],
+        "x": 865,
+        "y": 380,
+        "wires": [
+            [
+                "c268df8c955aa9d7"
+            ]
+        ]
+    },
+    {
+        "id": "6d5c612862f6407a",
+        "type": "link out",
+        "z": "ceca31730921b073",
+        "name": "link out 27",
+        "mode": "link",
+        "links": [
+            "f6de8fa4616cd7db"
+        ],
+        "x": 1165,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "59a9bf7961e81c47",
+        "type": "comment",
+        "z": "ceca31730921b073",
+        "name": "Forms Tab",
+        "info": "",
+        "x": 400,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "23da60822e9b74aa",
+        "type": "comment",
+        "z": "ceca31730921b073",
+        "name": "Cluster Charts Tab",
+        "info": "",
+        "x": 1010,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "94e234886e3622ef",
+        "type": "ui_gauge",
+        "z": "ceca31730921b073",
+        "name": "ΑΤΤΙΚΗ",
+        "group": "35ce7a80bdacc407",
+        "order": 1,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[0]}}",
+        "label": "Density",
+        "format": "{{msg.payload[0].data[0][0]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 980,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "05ee857bdd5322f4",
+        "type": "ui_gauge",
+        "z": "ceca31730921b073",
+        "name": "ΑΕΡΟΔΡΟΜΙΟ",
+        "group": "35ce7a80bdacc407",
+        "order": 2,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[1]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][1]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 1000,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "d4fd7d9483ca48e5",
+        "type": "ui_gauge",
+        "z": "ceca31730921b073",
+        "name": "ΜΟΝΑΣΤΗΡΑΚΙ",
+        "group": "35ce7a80bdacc407",
+        "order": 7,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[2]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][2]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 1000,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "d896aa5e8b221684",
+        "type": "ui_gauge",
+        "z": "ceca31730921b073",
+        "name": "ΟΜΟΝΟΙΑ",
+        "group": "35ce7a80bdacc407",
+        "order": 8,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[3]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][3]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 990,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "a3f9ad23b385073f",
+        "type": "ui_gauge",
+        "z": "ceca31730921b073",
+        "name": "ΣΤΑΘΜΟΣ ΛΑΡΙΣΗΣ",
+        "group": "35ce7a80bdacc407",
+        "order": 13,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[4]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][4]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 1020,
+        "y": 600,
+        "wires": []
+    },
+    {
+        "id": "8c67753d71d0c825",
+        "type": "ui_gauge",
+        "z": "ceca31730921b073",
+        "name": "ΣΥΝΤΑΓΜΑ",
+        "group": "35ce7a80bdacc407",
+        "order": 14,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[5]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][5]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 990,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "815b070e4f6925fd",
+        "type": "ui_gauge",
+        "z": "ceca31730921b073",
+        "name": "ΑΤΤΙΚΗ",
+        "group": "dc634c40a0a45129",
+        "order": 4,
+        "width": 6,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[0]}}",
+        "label": "Density",
+        "format": "{{msg.payload[0].data[0][0]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 400,
+        "y": 920,
+        "wires": []
+    },
+    {
+        "id": "a5457f41adc67e98",
+        "type": "ui_gauge",
+        "z": "ceca31730921b073",
+        "name": "ΑΕΡΟΔΡΟΜΙΟ",
+        "group": "dc634c40a0a45129",
+        "order": 5,
+        "width": 6,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[1]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][1]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 420,
+        "y": 960,
+        "wires": []
+    },
+    {
+        "id": "3df84c38d6264849",
+        "type": "ui_gauge",
+        "z": "ceca31730921b073",
+        "name": "ΜΟΝΑΣΤΗΡΑΚΙ",
+        "group": "dc634c40a0a45129",
+        "order": 6,
+        "width": 6,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[2]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][2]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 420,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "a6189794ec68fa71",
+        "type": "ui_gauge",
+        "z": "ceca31730921b073",
+        "name": "ΟΜΟΝΟΙΑ",
+        "group": "dc634c40a0a45129",
+        "order": 7,
+        "width": 6,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[3]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][3]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 410,
+        "y": 1040,
+        "wires": []
+    },
+    {
+        "id": "eb8330fd47398615",
+        "type": "ui_gauge",
+        "z": "ceca31730921b073",
+        "name": "ΣΤΑΘΜΟΣ ΛΑΡΙΣΗΣ",
+        "group": "dc634c40a0a45129",
+        "order": 8,
+        "width": 6,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[4]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][4]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 440,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "c8d4402c8b008bf7",
+        "type": "ui_gauge",
+        "z": "ceca31730921b073",
+        "name": "ΣΥΝΤΑΓΜΑ",
+        "group": "dc634c40a0a45129",
+        "order": 9,
+        "width": 6,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{msg.payload[0].series[5]}}",
+        "label": "units",
+        "format": "{{msg.payload[0].data[0][5]}}",
+        "min": 0,
+        "max": "3",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "1",
+        "seg2": "2",
+        "diff": false,
+        "className": "",
+        "x": 410,
+        "y": 1120,
+        "wires": []
+    },
+    {
+        "id": "4cddf2b0defd3065",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 21",
+        "links": [
+            "2e346f0a4901e35b"
+        ],
+        "x": 835,
+        "y": 540,
+        "wires": [
+            [
+                "94e234886e3622ef",
+                "05ee857bdd5322f4",
+                "d4fd7d9483ca48e5",
+                "d896aa5e8b221684",
+                "a3f9ad23b385073f",
+                "8c67753d71d0c825",
+                "f799a0647c1c28fb"
+            ]
+        ]
+    },
+    {
+        "id": "db81b107668df494",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 22",
+        "links": [
+            "2e346f0a4901e35b"
+        ],
+        "x": 255,
+        "y": 1020,
+        "wires": [
+            [
+                "815b070e4f6925fd",
+                "a5457f41adc67e98",
+                "3df84c38d6264849",
+                "a6189794ec68fa71",
+                "eb8330fd47398615",
+                "c8d4402c8b008bf7",
+                "d44158fe925e5493"
+            ]
+        ]
+    },
+    {
+        "id": "f799a0647c1c28fb",
+        "type": "ui_chart",
+        "z": "ceca31730921b073",
+        "name": "",
+        "group": "35ce7a80bdacc407",
+        "order": 19,
+        "width": 8,
+        "height": 10,
+        "label": "New Day Station Clusters",
+        "chartType": "horizontalBar",
+        "legend": "true",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "0",
+        "ymax": "3",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1030,
+        "y": 700,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "cf0a82668b278c91",
+        "type": "ui_template",
+        "z": "ceca31730921b073",
+        "group": "dc634c40a0a45129",
+        "name": "Conclusions",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "format": "<p>\n    <strong>On {{msg.payload[0].date}}</strong>:\n<ul>\n    <li><strong>{{msg.payload[0].conclusion.message1}}</strong> {{msg.payload[0].conclusion.message2}} <strong>{{msg.payload[0].conclusion.message3}}</strong></li>\n    <li><strong>{{msg.payload[1].conclusion.message1}}</strong> {{msg.payload[1].conclusion.message2}} <strong>{{msg.payload[1].conclusion.message3}}</strong></li>\n    <li><strong>{{msg.payload[2].conclusion.message1}}</strong> {{msg.payload[2].conclusion.message2}} <strong>{{msg.payload[2].conclusion.message3}}</strong></li>\n    <li><strong>{{msg.payload[3].conclusion.message1}}</strong> {{msg.payload[3].conclusion.message2}} <strong>{{msg.payload[3].conclusion.message3}}</strong></li>\n    <li><strong>{{msg.payload[4].conclusion.message1}}</strong> {{msg.payload[4].conclusion.message2}} <strong>{{msg.payload[4].conclusion.message3}}</strong></li>\n    <li><strong>{{msg.payload[5].conclusion.message1}}</strong> {{msg.payload[5].conclusion.message2}} <strong>{{msg.payload[5].conclusion.message3}}</strong></li>\n</ul>\n</p>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 410,
+        "y": 860,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "11b24b027d7739d1",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 26",
+        "links": [
+            "b8d762699fb9ef1b"
+        ],
+        "x": 285,
+        "y": 860,
+        "wires": [
+            [
+                "cf0a82668b278c91"
+            ]
+        ]
+    },
+    {
+        "id": "210f4f9a3284f73c",
+        "type": "comment",
+        "z": "ceca31730921b073",
+        "name": "Conclusions received, from conclusionexchange, to be shown",
+        "info": "",
+        "x": 260,
+        "y": 820,
+        "wires": []
+    },
+    {
+        "id": "335c76df81f50606",
+        "type": "ui_date_picker",
+        "z": "ceca31730921b073",
+        "name": "",
+        "label": "date",
+        "group": "dc634c40a0a45129",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 390,
+        "y": 760,
+        "wires": [
+            [
+                "693c4a3e0749f221"
+            ]
+        ]
+    },
+    {
+        "id": "693c4a3e0749f221",
+        "type": "link out",
+        "z": "ceca31730921b073",
+        "name": "link out 34",
+        "mode": "link",
+        "links": [
+            "14f33ba9b744ec02"
+        ],
+        "x": 495,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "d1b73ec92b590865",
+        "type": "comment",
+        "z": "ceca31730921b073",
+        "name": "By default date, with user auth",
+        "info": "",
+        "x": 140,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "e841cbb2f6d99eef",
+        "type": "comment",
+        "z": "ceca31730921b073",
+        "name": "Conclusions Tab",
+        "info": "",
+        "x": 420,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "9a066019371d9d91",
+        "type": "ui_ui_control",
+        "z": "ceca31730921b073",
+        "name": "to conclusions",
+        "events": "change",
+        "x": 420,
+        "y": 320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "e97494ab4fa13374",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 28",
+        "links": [
+            "2da5bda8c2f1308c"
+        ],
+        "x": 285,
+        "y": 320,
+        "wires": [
+            [
+                "9a066019371d9d91"
+            ]
+        ]
+    },
+    {
+        "id": "d44158fe925e5493",
+        "type": "ui_chart",
+        "z": "ceca31730921b073",
+        "name": "",
+        "group": "cea113e5bd33101b",
+        "order": 1,
+        "width": 10,
+        "height": 10,
+        "label": "New Day Station Clusters",
+        "chartType": "horizontalBar",
+        "legend": "true",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "0",
+        "ymax": "3",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 450,
+        "y": 1180,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "5f782b6f9b20a48c",
+        "type": "ui_button",
+        "z": "ceca31730921b073",
+        "name": "",
+        "group": "dc634c40a0a45129",
+        "order": 9,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Logout",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "Logout",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 390,
+        "y": 1240,
+        "wires": [
+            [
+                "1784271724090b8b"
+            ]
+        ]
+    },
+    {
+        "id": "330f27b3b0223b47",
+        "type": "ui_ui_control",
+        "z": "ceca31730921b073",
+        "name": "to forms",
+        "events": "change",
+        "x": 400,
+        "y": 1300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "1784271724090b8b",
+        "type": "ui_toast",
+        "z": "ceca31730921b073",
+        "position": "dialog",
+        "displayTime": "3",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 1,
+        "ok": "I'm sure",
+        "cancel": "Cancel",
+        "raw": false,
+        "className": "",
+        "topic": "Are you sure you want to log out?",
+        "name": "Logout/Cancel",
+        "x": 560,
+        "y": 1240,
+        "wires": [
+            [
+                "8d56d90743592c65"
+            ]
+        ]
+    },
+    {
+        "id": "8d56d90743592c65",
+        "type": "link out",
+        "z": "ceca31730921b073",
+        "name": "link out 37",
+        "mode": "link",
+        "links": [
+            "e32ca9008d9d9a18"
+        ],
+        "x": 695,
+        "y": 1240,
+        "wires": []
+    },
+    {
+        "id": "2cbfa7a2a22a215d",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 30",
+        "links": [
+            "64ef1e4c82a06a88"
+        ],
+        "x": 265,
+        "y": 1300,
+        "wires": [
+            [
+                "330f27b3b0223b47"
+            ]
+        ]
+    },
+    {
+        "id": "911a417efbceaa26",
+        "type": "ui_toast",
+        "z": "ceca31730921b073",
+        "position": "top left",
+        "displayTime": "5",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 0,
+        "ok": "OK",
+        "cancel": "",
+        "raw": false,
+        "className": "",
+        "topic": "You are not subscribed to OASA!",
+        "name": "Not subbed",
+        "x": 410,
+        "y": 1360,
+        "wires": []
+    },
+    {
+        "id": "64ea77cd894e5e57",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 37",
+        "links": [
+            "dc3c0decd42a3614"
+        ],
+        "x": 285,
+        "y": 1360,
+        "wires": [
+            [
+                "911a417efbceaa26"
+            ]
+        ]
+    },
+    {
+        "id": "32a036d1aba83be5",
+        "type": "ui_toast",
+        "z": "ceca31730921b073",
+        "position": "top left",
+        "displayTime": "5",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 0,
+        "ok": "OK",
+        "cancel": "",
+        "raw": false,
+        "className": "",
+        "topic": "Incorrect password!",
+        "name": "Incorrect pass",
+        "x": 420,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "34ecfa1f3ff0551f",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 38",
+        "links": [
+            "019393cf8cf20373"
+        ],
+        "x": 285,
+        "y": 440,
+        "wires": [
+            [
+                "32a036d1aba83be5"
+            ]
+        ]
+    },
+    {
+        "id": "d2b23a4a65775ebc",
+        "type": "ui_toast",
+        "z": "ceca31730921b073",
+        "position": "top left",
+        "displayTime": "5",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 0,
+        "ok": "OK",
+        "cancel": "",
+        "raw": false,
+        "className": "",
+        "topic": "User not found!",
+        "name": "User not found",
+        "x": 420,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "8e8aeac033c63526",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 39",
+        "links": [
+            "56243fe876b68b80"
+        ],
+        "x": 285,
+        "y": 500,
+        "wires": [
+            [
+                "d2b23a4a65775ebc"
+            ]
+        ]
+    },
+    {
+        "id": "6cb16c050d469495",
+        "type": "ui_toast",
+        "z": "ceca31730921b073",
+        "position": "top left",
+        "displayTime": "5",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 0,
+        "ok": "OK",
+        "cancel": "",
+        "raw": false,
+        "className": "",
+        "topic": "Login successful!",
+        "name": "Login success",
+        "x": 420,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "edd62f4d687a1995",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 40",
+        "links": [
+            "56243139933805a7"
+        ],
+        "x": 285,
+        "y": 560,
+        "wires": [
+            [
+                "6cb16c050d469495"
+            ]
+        ]
+    },
+    {
+        "id": "a87018111bd0a83c",
+        "type": "ui_toast",
+        "z": "ceca31730921b073",
+        "position": "top left",
+        "displayTime": "5",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 0,
+        "ok": "OK",
+        "cancel": "",
+        "raw": false,
+        "className": "",
+        "topic": "You are not subscribed to OASA!",
+        "name": "Not subbed",
+        "x": 410,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "490b36f34cb82f55",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 41",
+        "links": [
+            "5c5965a9874f66b9"
+        ],
+        "x": 285,
+        "y": 380,
+        "wires": [
+            [
+                "a87018111bd0a83c"
+            ]
+        ]
+    },
+    {
+        "id": "7e0c0f64a86b2542",
+        "type": "ui_toast",
+        "z": "ceca31730921b073",
+        "position": "top left",
+        "displayTime": "5",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 0,
+        "ok": "OK",
+        "cancel": "",
+        "raw": false,
+        "className": "",
+        "topic": "Registration successful!",
+        "name": "Reg Success",
+        "x": 410,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "3e41ea7c62a4a1a4",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 42",
+        "links": [
+            "28fd935f71e34c08"
+        ],
+        "x": 285,
+        "y": 200,
+        "wires": [
+            [
+                "7e0c0f64a86b2542"
+            ]
+        ]
+    },
+    {
+        "id": "b3a384b4bedbe779",
+        "type": "ui_toast",
+        "z": "ceca31730921b073",
+        "position": "top left",
+        "displayTime": "5",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 0,
+        "ok": "OK",
+        "cancel": "",
+        "raw": false,
+        "className": "",
+        "topic": "Logged out successfully!",
+        "name": "Logout success",
+        "x": 420,
+        "y": 1420,
+        "wires": []
+    },
+    {
+        "id": "6fb4d74951f0321d",
+        "type": "link in",
+        "z": "ceca31730921b073",
+        "name": "link in 43",
+        "links": [
+            "96d4fdf26728980c"
+        ],
+        "x": 285,
+        "y": 1420,
+        "wires": [
+            [
+                "b3a384b4bedbe779"
+            ]
+        ]
+    },
+    {
+        "id": "0d9996693cf61614",
+        "type": "sqlitedb",
+        "db": "/home/george-magni/Downloads/stationdb.sqlite",
+        "mode": "RWC"
+    },
+    {
+        "id": "2d51fc0d473c9ffa",
+        "type": "sqlitedb",
+        "db": "/home/george-magni/Downloads/userdb.sqlite",
+        "mode": "RWC"
+    },
+    {
+        "id": "698020603d8a2907",
+        "type": "amqp-broker",
+        "name": "RabbitMQOASA",
+        "host": "localhost",
+        "port": "5672",
+        "vhost": "",
+        "tls": false,
+        "credsFromSettings": false
+    },
+    {
+        "id": "8a571044f783cc36",
+        "type": "ui_group",
+        "name": "Register",
+        "tab": "749c804b1f57f2d7",
+        "order": 2,
+        "disp": true,
+        "width": "10",
+        "collapse": true,
+        "className": ""
+    },
+    {
+        "id": "be557a4668e9cbf4",
+        "type": "ui_group",
+        "name": "Login",
+        "tab": "749c804b1f57f2d7",
+        "order": 1,
+        "disp": true,
+        "width": 10,
+        "collapse": true,
+        "className": ""
+    },
+    {
+        "id": "dc634c40a0a45129",
+        "type": "ui_group",
+        "name": "Conclusions",
+        "tab": "4c44a7d094a66753",
+        "order": 1,
+        "disp": true,
+        "width": "12",
+        "collapse": true,
+        "className": ""
+    },
+    {
+        "id": "e09760222c355a5a",
+        "type": "ui_group",
+        "name": "Station Selection",
+        "tab": "87369cca35093f10",
+        "order": 1,
+        "disp": true,
+        "width": 17,
+        "collapse": true,
+        "className": ""
+    },
+    {
+        "id": "35ce7a80bdacc407",
+        "type": "ui_group",
+        "name": "Validation Gauge",
+        "tab": "87369cca35093f10",
+        "order": 2,
+        "disp": true,
+        "width": 11,
+        "collapse": true,
+        "className": ""
+    },
+    {
+        "id": "cea113e5bd33101b",
+        "type": "ui_group",
+        "name": "Bar Chart",
+        "tab": "4c44a7d094a66753",
+        "order": 2,
+        "disp": true,
+        "width": "10",
+        "collapse": true,
+        "className": ""
+    },
+    {
+        "id": "749c804b1f57f2d7",
+        "type": "ui_tab",
+        "name": "Forms",
+        "icon": "dashboard",
+        "order": 1,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "4c44a7d094a66753",
+        "type": "ui_tab",
+        "name": "Conclusions",
+        "icon": "dashboard",
+        "order": 2,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "87369cca35093f10",
+        "type": "ui_tab",
+        "name": "Cluster Charts",
+        "icon": "dashboard",
+        "order": 3,
+        "disabled": false,
+        "hidden": false
+    }
+]
